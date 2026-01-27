@@ -76,7 +76,7 @@ public class WarnParser {
 				
 				Calendar cal = new GregorianCalendar();
 				cal.setTime(stEffctTm);
-				cal.add(Calendar.HOUR_OF_DAY, 1);
+				cal.add(Calendar.MONTH, 1);
 				
 				edEffctTm = sdf2.parse(sdf.format(cal.getTime()) + tokens[index+1].split("\\/")[1]);
 			}
@@ -106,7 +106,7 @@ public class WarnParser {
 					
 					Calendar cal = new GregorianCalendar();
 					cal.setTime(targetStEffctTm);
-					cal.add(Calendar.HOUR_OF_DAY, 1);
+					cal.add(Calendar.MONTH, 1);
 					
 					targetEdEffctTm = sdf2.parse(sdf.format(cal.getTime()) + tokens[index+2].split("\\/")[1]);
 				}
@@ -136,7 +136,7 @@ public class WarnParser {
 					
 					Calendar cal = new GregorianCalendar();
 					cal.setTime(targetStEffctTm);
-					cal.add(Calendar.HOUR_OF_DAY, 1);
+					cal.add(Calendar.MONTH, 1);
 					
 					targetEdEffctTm = sdf2.parse(sdf.format(cal.getTime()) + tokens[index+2].split("\\/")[1]);
 				}
@@ -292,9 +292,7 @@ public class WarnParser {
 						warnData.getTargetWarnNum() == targetWarnData.getWarnNum() &&
 						warnData.getTargetStEffctTm().getTime() == targetWarnData.getStEffctTm().getTime() &&
 						warnData.getTargetEdEffctTm().getTime() == targetWarnData.getEdEffctTm().getTime()) {
-						
-						
-						
+							
 						targetWarnData.setStCnlTm(warnData.getStEffctTm());
 						targetWarnData.setEdCnlTm(warnData.getEdEffctTm());
 						targetWarnData.addInfWarnSources(warnData.getWarnSource());
@@ -308,7 +306,6 @@ public class WarnParser {
 				}
 				
 				warnDataList.remove(i--);
-				
 			} 
 		}
 		
@@ -316,7 +313,7 @@ public class WarnParser {
 			
 			WarnData warnData = warnDataList.get(i);
 			
-			// 취소전문인 경우 대상 전문에 전문취소시간을 업데이트하고 지운다
+			// 연장전문인 경우 대상 전문에 전문연장시간을 업데이트하고 지운다
 			if(warnData.isExtended()) {
 				
 				for(int j=0 ; j<warnDataList.size() ; j++) {
@@ -331,14 +328,19 @@ public class WarnParser {
 						warnData.getTargetWarnNum() == targetWarnData.getWarnNum() &&
 						warnData.getTargetStEffctTm().getTime() == targetWarnData.getStEffctTm().getTime() &&
 						warnData.getTargetEdEffctTm().getTime() == targetWarnData.getEdEffctTm().getTime()) {
-					
+						
+						// 연장전문애 취소전문 정보가 있다면 대상전문에 취소정보를 업데이트해준다
+						if(warnData.getStCnlTm() != null && warnData.getEdCnlTm() != null) {
+							targetWarnData.setStCnlTm(warnData.getStCnlTm());
+							targetWarnData.setEdCnlTm(warnData.getEdCnlTm());
+						}						
 						
 						// 대상 전문이 연장전문인 경우 경보종료시간을 업데이트해준다
 						if(targetWarnData.isExtended()) {
 							
 							targetWarnData.setEdEffctTm(warnData.getEdEffctTm());
 							
-							targetWarnData.addInfWarnSources(warnData.getWarnSource());
+							targetWarnData.addInfWarnSources(warnData.getInfWarnSources() + warnData.getWarnSource());
 							
 						} else {
 						// 대상 전문이 연장전문이 아닌 경우 연장 시간을 입력해준다
@@ -436,36 +438,89 @@ public class WarnParser {
 	
 	public static void main(String[] args) throws Exception {
 		
-		String[] warnSourceList = new String[] {
+		String s = "	METAR RKSI 150400Z 18008KT 160V230 6000 FEW006 SCT020 BKN070    "+
+				"	          13/11 Q1005 NOSIG=                                    "+
+				"	METAR RKSS 150400Z 28011KT 9999 FEW010 SCT025 OVC080 13/12      "+
+				"	          Q1005 NOSIG=                                          "+
+				"	METAR RKPC 150400Z 29006KT 220V340 9999 FEW012 BKN035 OVC080    "+
+				"	          16/13 Q1007 NOSIG=                                    "+
+				"	METAR RKPK 150400Z 31007KT 9999 SCT015 BKN030 16/13 Q1003=      "+
+				"	METAR RKTU 150400Z 31009KT 9999 -RA FEW020 BKN050 OVC070 14/11  "+
+				"	          Q1005=                                                "+
+				"	METAR RKTN 150400Z 12001KT 9999 SCT040 BKN060 16/11 Q1004=      "+
+				"	METAR RKJB NIL=  "+
+				"	METAR RKNY 150400Z 36013KT 9000 FEW025 BKN050 OVC100 08/06      "+
+				"	          Q1005 NOSIG=                                          "+
+				"	                                                                ";
+		
+		
+		String[] metars = s.split("METAR");
+		
+		for(int i=0 ; i<metars.length ; i++) {
+			
+			String[] tokens = metars[i].trim().split("\\s+");
+			
+			for(int j=0 ;j<tokens.length ; j++) {
+				System.out.println(tokens[j]);
 				
-			
-			"RKSI AD WRNG 1 VALID 151508/151700 SFC WSPD 25KT MAX 35 FCST="
-			,"RKSI AD WRNG 1 VALID 162200/171300 SFC WSPD 25KT MAX 35 FCST="		
-			,"RKSI AD WRNG 1 VALID 180500/181000 EXTENDED AD WRNG 1 171300/180500="
-			,"RKSI AD WRNG 1 VALID 171300/180500 EXTENDED AD WRNG 1 162200/171300="
-			,"RKSI AD WRNG 1 VALID 180340/180500 CNL AD WRNG 1 171300/180500="
-			,"RKSI AD WRNG 5 VALID 261500/271500 EXTENDED AD WRNG 2 260900/261500="
-			,"RKSI AD WRNG 2 VALID 260900/261500 EXTENDED AD WRNG 1 252300/260900="
-			,"RKSI AD WRNG 1 VALID 252300/260900 SFC WSPD 25KT MAX 35 FCST="
-			
-			
-		};
-		
-		Date d = new SimpleDateFormat("yyyyMMddHHmm").parse("202012312230");
-		
-		List<WarnData> warnDataList = new ArrayList<WarnData>();
-		
-		WarnParser warnParser = new WarnParser();
-		
-		for(int i=0 ; i<warnSourceList.length ; i++) {
-			
-			WarnData warnData = warnParser.parse("RKSI", warnSourceList[i], d);
-			
-			warnDataList.add(warnData);
+				if("NIL=".equals(tokens[j])) {
+					System.out.println("맞음");
+				}
+			}
 		}
 		
-		warnParser.filterWarnDataList(warnDataList);
-		
-		System.out.println(warnDataList);
+//		
+//		String[] warnSourceList = new String[] {
+//				
+//			
+//				
+//				"RKSI AD WRNG 1 VALID 302126/302330 SFC VIS LESS THAN 400M FCST="
+//				,"RKSI AD WRNG 1 VALID 280100/280200 CNL AD WRNG 5 271300/280200="
+//				,"RKSI AD WRNG 9 VALID 272200/280100 EXTENDED AD WRNG 7 271800/272200="
+//				,"RKSI AD WRNG 8 VALID 271940/280300 CNL AD WRNG 6 271600/280300="
+//				,"RKSI AD WRNG 7 VALID 271800/272200 TS FCST INTSF="
+//				,"RKSI AD WRNG 6 VALID 271600/280300 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 5 VALID 271300/280200 EXTENDED AD WRNG 3 270600/271300="
+//				,"RKSI AD WRNG 4 VALID 270700/270900 CNL AD WRNG 2 270530/270900="
+//				,"RKSI AD WRNG 3 VALID 270600/271300 EXTENDED AD WRNG 7 270000/270600="
+//				,"RKSI AD WRNG 2 VALID 270530/270900 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 1 VALID 270010/271500 CNL AD WRNG 5 261500/271500="
+//				,"RKSI AD WRNG 7 VALID 270000/270600 HVY SN MORE THAN 03CM FCST="
+//				,"RKSI AD WRNG 6 VALID 261700/262200 EXTENDED AD WRNG 4 261400/261700="
+//				,"RKSI AD WRNG 5 VALID 261500/271500 EXTENDED AD WRNG 2 260900/261500="
+//				,"RKSI AD WRNG 4 VALID 261400/261700 TS FCST INTSF="
+//				,"RKSI AD WRNG 3 VALID 261050/261300 TS FCST INTSF="
+//				,"RKSI AD WRNG 2 VALID 260900/261500 EXTENDED AD WRNG 1 252300/260900="
+//				,"RKSI AD WRNG 1 VALID 260429/260700 TS FCST INTSF="
+//				,"RKSI AD WRNG 1 VALID 252300/260900 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 1 VALID 180340/180500 CNL AD WRNG 1 171300/180500="
+//				,"RKSI AD WRNG 1 VALID 171300/180500 EXTENDED AD WRNG 1 162200/171300="
+//				,"RKSI AD WRNG 1 VALID 162200/171300 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 1 VALID 151508/151700 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 2 VALID 272332/272350 CNL AD WRNG 1 272230/272350="
+//				,"RKSI AD WRNG 1 VALID 272230/272350 SFC VIS LESS THAN 400M FCST="
+//				,"RKSI AD WRNG 1 VALID 230400/230900 CNL AD WRNG 1 221400/230900="
+//				,"RKSI AD WRNG 1 VALID 221400/230900 SFC WSPD 25KT MAX 35 FCST="
+//				,"RKSI AD WRNG 2 VALID 180710/181600 CNL AD WRNG 1 180412/181600="
+//				,"RKSI AD WRNG 1 VALID 180412/181600 SFC WSPD 25KT MAX 35 FCST="
+//			
+//		};
+//		
+//		Date d = new SimpleDateFormat("yyyyMMddHHmm").parse("202012312230");
+//		
+//		List<WarnData> warnDataList = new ArrayList<WarnData>();
+//		
+//		WarnParser warnParser = new WarnParser();
+//		
+//		for(int i=0 ; i<warnSourceList.length ; i++) {
+//			
+//			WarnData warnData = warnParser.parse("RKSI", warnSourceList[i], d);
+//			
+//			warnDataList.add(warnData);
+//		}
+//		
+//		warnParser.filterWarnDataList(warnDataList);
+//		
+//		System.out.println(warnDataList);
 	}
 }

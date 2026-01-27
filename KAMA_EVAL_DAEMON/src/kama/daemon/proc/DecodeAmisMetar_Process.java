@@ -76,7 +76,7 @@ public class DecodeAmisMetar_Process extends DaemonProcess {
 	}
 
 	@Override
-	public void process(Configuration config) {
+	public void process(Configuration config, Map<String, String> reqMap) {
 		
 		this.config = config;
 		

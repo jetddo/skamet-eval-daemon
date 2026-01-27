@@ -40,6 +40,8 @@ public class EvaluateAmisDf_Process extends DaemonProcess {
 	
 	private EvaluationDatabaseUtil evaluationDatabaseUtil;
 	
+	private Map<String, String> reqMap;
+	
 	private boolean initialize() {
 		
 		StandardPBEStringEncryptor encryptor = new StandardPBEStringEncryptor();
@@ -84,9 +86,10 @@ public class EvaluateAmisDf_Process extends DaemonProcess {
 	}
 
 	@Override
-	public void process(Configuration config) {
+	public void process(Configuration config, Map<String, String> reqMap) {
 		
 		this.config = config;
+		this.reqMap = reqMap;
 		
 		System.out.println(":: Start Initialize");
 		
@@ -135,6 +138,17 @@ public class EvaluateAmisDf_Process extends DaemonProcess {
 			cal.add(Calendar.HOUR_OF_DAY, 24);
 			// 종료일은 시작일에서 1일을 더한다
 			String endTmStr = sdf.format(cal.getTime());
+			
+			if(this.reqMap != null) {
+				
+				String s = this.reqMap.get("-s");
+				String e = this.reqMap.get("-e");
+				
+				if(s != null && e != null) {
+					startTmStr = s;
+					endTmStr = e;
+				}
+			}
 			
 			System.out.println(":: START DATE: " + startTmStr);
 			System.out.println(":: END DATE: " + endTmStr);
@@ -197,14 +211,14 @@ public class EvaluateAmisDf_Process extends DaemonProcess {
 		
 		System.out.println("->\t Check Duplicated Row ...");
 		
-		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getDfResultCount(stnCd, evalTmStr, evalVer);
+		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getDfEvalResultCount(stnCd, evalTmStr, evalVer);
 		
 		if(dupEvalUIDList != null && dupEvalUIDList.size() >= 0) {
 			
 			System.out.println("->\t\t Find Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			System.out.println("->\t\t Delete Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			
-			this.evaluationDatabaseUtil.removeDfResultData(dupEvalUIDList);
+			this.evaluationDatabaseUtil.removeDfEvalResultData(dupEvalUIDList);
 		}	
 		
 		if(metarInfoList != null && metarDataList != null) {

@@ -80,7 +80,8 @@ public class WarnEvaluatorVer1 extends WarnEvaluator {
 		// 경보 취소 정보가 있는 경우 경보 종료시점을 변경한다
 		if(stCnlTm != null) {
 			_EdEffctTm = stCnlTm;
-		} else if(stCnlTm == null && stExtTm != null) {
+		// 경보 취소 정보가 없고 연장정보가 있는 경우 경보 종료시점을 변경한다
+		} else if(stCnlTm == null && edExtTm != null) {
 			_EdEffctTm = edExtTm;
 		}
 		
@@ -110,7 +111,7 @@ public class WarnEvaluatorVer1 extends WarnEvaluator {
 			
 		case HVY_RA:
 			
-			this.evaluateHvyRa(stnCd, warnEvaluationData, warnData.getRa());
+			this.evaluateHvyRa(stnCd, warnEvaluationData, 60d);
 			
 			break;
 			
@@ -165,7 +166,7 @@ public class WarnEvaluatorVer1 extends WarnEvaluator {
 	}
 	
 	// 선행시간 계산
-public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
+	public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 		
 		WarnEvaluationData.Score score = warnEvaluationData.getScore();
 		
@@ -240,17 +241,18 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			Date stEffctTm = warnEvaluationData.getStEffctTm();
 			Date edEffctTm = warnEvaluationData.getEdEffctTm();
 			
-			Double maxWspd10MinAvg = 0d;
-			Double maxWspd1MinMax = 0d;
-			
 			// 구간별 경보 도달 여부
 			boolean[] arrYnList = new boolean[]{false, false};
 			
 			// 구간별 최초 도달 시각
 			Date[] firstArrTmList = new Date[]{null, null};
 			
+			double[] firstArrValRatioList = new double[]{0d, 0d};
+			
 			// 구간별 최초 현상 값
 			String[] firstArrValList = new String[]{null, null};
+			
+			String[] firstArrValTypeList = new String[] {null, null};
 			
 			// 구간별 최종 관측 시각
 			Date[] lastObsTmList = new Date[]{null, null};
@@ -276,83 +278,150 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				Double wspd10MinAvg = Double.valueOf(amosData.get("wspd10minAvg").toString());
 				Double wspd1MinMax = Double.valueOf(amosData.get("wspd1minMax").toString());
 				
-				maxWspd10MinAvg = Math.max(maxWspd10MinAvg, wspd10MinAvg);
-				maxWspd1MinMax = Math.max(maxWspd1MinMax, wspd1MinMax);
-				
+				// 평균 풍속 또는 GUST 가 경보기준 이상일때
 				if(wspd10MinAvg >= wspd || wspd1MinMax >= maxWspd) {
 					
+					// 경보기준값 만족
 					arrYnList[0] = true;
-					
-					if(firstArrTmList[0] == null) {
+										
+					if(wspd10MinAvg >= wspd) {		
 						
-						firstArrTmList[0] = tm;
-						lastObsTmList[0] = tm;
+						double ratio = wspd10MinAvg / wspd * 100;
 						
-						if(wspd10MinAvg >= wspd) {						
+						if(firstArrTmList[0] == null) {
 							
+							firstArrTmList[0] = tm;
 							firstArrValList[0] = wspd10MinAvg.toString();
-							lastObsValList[0] = wspd10MinAvg.toString();
+							firstArrValTypeList[0] = "wspd";
 							
-						} else {
-							
-							firstArrValList[0] = "G" + wspd1MinMax.toString();
-							lastObsValList[0] = "G" + wspd1MinMax.toString();
+							firstArrValRatioList[0] = ratio;
 						}
 						
-					} else {
-						
-						lastObsTmList[0] = tm;
-						
-						if(wspd10MinAvg >= wspd) {						
+						if(lastObsTmList[0] != null && lastObsValList[0] != null) {
 							
-							lastObsValList[0] = wspd10MinAvg.toString();
+							// 활주로 다른 방향인 경우 대비
+							if(lastObsTmList[0].getTime() == tm.getTime()) {
+								
+								if(EvaluationUtils.compareSfcWspdRatio(lastObsValList[0], wspd10MinAvg.toString(), wspd, maxWspd) == 2) {
+									lastObsValList[0] = wspd10MinAvg.toString();
+								}
+								
+							} else {
+								lastObsTmList[0] = tm;
+								lastObsValList[0] = wspd10MinAvg.toString();			
+							}
 							
 						} else {
 							
-							lastObsValList[0] = "G" + wspd1MinMax.toString();
+							lastObsTmList[0] = tm;
+							lastObsValList[0] = wspd10MinAvg.toString();			
+						}					
+					} 
+					
+					if (wspd1MinMax >= maxWspd){
+						
+						double ratio = wspd1MinMax / maxWspd * 100;
+						
+						if(firstArrTmList[0] == null) {
+							
+							firstArrTmList[0] = tm;
+							firstArrValList[0] = "G" + wspd1MinMax.toString();
+							firstArrValTypeList[0] = "gust";
+							
+							firstArrValRatioList[0] = ratio;
+						}
+						
+						if(lastObsTmList[0] != null && lastObsValList[0] != null) {
+							
+							// 활주로 다른 방향인 경우 대비
+							if(lastObsTmList[0].getTime() == tm.getTime()) {
+								
+								if(EvaluationUtils.compareSfcWspdRatio(lastObsValList[0], "G" + wspd1MinMax.toString(), wspd, maxWspd) == 2) {
+									lastObsValList[0] = "G" + wspd1MinMax.toString();			
+								}
+								
+							} else {
+								lastObsTmList[0] = tm;
+								lastObsValList[0] = "G" + wspd1MinMax.toString();			
+							}
+							
+						} else {
+							
+							lastObsTmList[0] = tm;
+							lastObsValList[0] = "G" + wspd1MinMax.toString();	
 						}
 					}
 					
-				} else if((wspd10MinAvg < wspd && wspd10MinAvg >= wspd-3) || 
-						  (wspd1MinMax < maxWspd && wspd1MinMax >= maxWspd-4)) {
+				} else if((wspd10MinAvg < wspd && wspd10MinAvg >= wspd-5) || 
+						  (wspd1MinMax < maxWspd && wspd1MinMax >= maxWspd-7)) {
 					
 					arrYnList[1] = true;
 					
-					if(firstArrTmList[1] == null) {
+					if(wspd10MinAvg < wspd && wspd10MinAvg >= wspd-5) {
 						
-						firstArrTmList[1] = tm;
-						lastObsTmList[0] = tm;
-						lastObsTmList[1] = tm;
+						double ratio = wspd10MinAvg / wspd * 100;
 						
-						if(wspd10MinAvg < wspd && wspd10MinAvg >= wspd-3) {
-							
+						if(ratio > firstArrValRatioList[1]) {
+							firstArrTmList[1] = tm;
 							firstArrValList[1] = wspd10MinAvg.toString();
-							lastObsValList[0] = wspd10MinAvg.toString();
-							lastObsValList[1] = wspd10MinAvg.toString();
+							firstArrValTypeList[1] = "wspd";
+							
+							firstArrValRatioList[1] = ratio;
+						}
+
+						if(lastObsTmList[1] != null && lastObsValList[1] != null) {
+							
+							// 활주로 다른 방향인 경우 대비
+							if(lastObsTmList[1].getTime() == tm.getTime()) {
+								
+								if(EvaluationUtils.compareSfcWspdRatio(lastObsValList[1], wspd10MinAvg.toString(), wspd, maxWspd) == 2) {
+									lastObsValList[1] = wspd10MinAvg.toString();
+								}
+								
+							} else {
+								lastObsTmList[1] = tm;
+								lastObsValList[1] = wspd10MinAvg.toString();			
+							}
 							
 						} else {
 							
+							lastObsTmList[1] = tm;
+							lastObsValList[1] = wspd10MinAvg.toString();			
+						}						
+					} 
+					
+					if(wspd1MinMax < maxWspd && wspd1MinMax >= maxWspd-7) {
+						
+						double ratio = wspd1MinMax / maxWspd * 100;							
+						
+						if(ratio > firstArrValRatioList[1]) {
+							firstArrTmList[1] = tm;
 							firstArrValList[1] = "G" + wspd1MinMax.toString();
-							lastObsValList[0] = "G" + wspd1MinMax.toString();
-							lastObsValList[1] = "G" + wspd1MinMax.toString();
+							firstArrValTypeList[1] = "gust";
+							
+							firstArrValRatioList[1] = ratio;
 						}
 						
-					} else {
-						
-						lastObsTmList[0] = tm;
-						lastObsTmList[1] = tm;
-						
-						if(wspd10MinAvg < wspd && wspd10MinAvg >= wspd-3) {
+						if(lastObsTmList[1] != null && lastObsValList[1] != null) {
 							
-							lastObsValList[0] = wspd10MinAvg.toString();
-							lastObsValList[1] = wspd10MinAvg.toString();
+							// 활주로 다른 방향인 경우 대비
+							if(lastObsTmList[1].getTime() == tm.getTime()) {
+								
+								if(EvaluationUtils.compareSfcWspdRatio(lastObsValList[1], "G" + wspd1MinMax.toString(), wspd, maxWspd) == 2) {
+									lastObsValList[1] = "G" + wspd1MinMax.toString();			
+								}
+								
+							} else {
+								lastObsTmList[1] = tm;
+								lastObsValList[1] = "G" + wspd1MinMax.toString();			
+							}
 							
 						} else {
 							
-							lastObsValList[0] = "G" + wspd1MinMax.toString();
-							lastObsValList[1] = "G" + wspd1MinMax.toString();
+							lastObsTmList[1] = tm;
+							lastObsValList[1] = "G" + wspd1MinMax.toString();	
 						}
-					}
+					}					
 				}
 			}
 			
@@ -361,15 +430,37 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
 				
 			} else if(arrYnList[1]) {
 				
-				Float score1 = (float)(maxWspd10MinAvg / wspd * 50);
-				Float score2 = (float)(maxWspd1MinMax / maxWspd * 50);
+				Float effctScore = 0f;
 				
-				score.setEffct(Math.max(score1, score2));
+				if("gust".equals(firstArrValTypeList[1])) {
+					effctScore = (float)(Float.valueOf(firstArrValList[1].replace("G", "")) / maxWspd * 50);
+				} else {
+					effctScore = (float)(Float.valueOf(firstArrValList[1]) / wspd * 50);
+				}
+				
+				score.setEffct(effctScore);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[1]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[1]);
 				warnEvaluationData.setLastObsTm(lastObsTmList[1]);
@@ -416,7 +507,7 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			
 			// METAR 와 LOCAL 를 합성한다
 			
-			List<Map<String, Object>> obsInfoList = this.combineMetarLocalList(stnCd, metarInfoList, localInfoList);
+			List<Map<String, Object>> obsInfoList = EvaluationUtils.combineMetarLocalList(this.metarParser, stnCd, metarInfoList, localInfoList);
 				
 			for(int i=0 ; i<obsInfoList.size() ; i++) {
 				
@@ -478,11 +569,30 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			}
 			
 			if(arrYnList[0]) {
+				
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
+				
 				
 			} else if(arrYnList[1]) {
 				
@@ -533,7 +643,7 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			
 			// METAR 와 LOCAL 를 합성한다
 			
-			List<Map<String, Object>> obsInfoList = this.combineMetarLocalList(stnCd, metarInfoList, localInfoList);
+			List<Map<String, Object>> obsInfoList = EvaluationUtils.combineMetarLocalList(this.metarParser, stnCd, metarInfoList, localInfoList);
 			
 			for(int i=0 ; i<obsInfoList.size() ; i++) {
 				
@@ -583,8 +693,25 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
 				
 			} else if(arrYnList[1]) {
 				
@@ -635,7 +762,7 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			
 			// METAR 와 LOCAL 를 합성한다
 			
-			List<Map<String, Object>> obsInfoList = this.combineMetarLocalList(stnCd, metarInfoList, localInfoList);
+			List<Map<String, Object>> obsInfoList = EvaluationUtils.combineMetarLocalList(this.metarParser, stnCd, metarInfoList, localInfoList);
 			
 			for(int i=0 ; i<obsInfoList.size() ; i++) {
 				
@@ -685,8 +812,25 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
 				
 			} else if(arrYnList[1]) {
 				
@@ -733,15 +877,15 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			// 구간별 최종 현상 값
 			String[] lastObsValList = new String[]{null, null};
 			
-			List<Map<String, Object>> metarFrscDataList = this.evaluationDatabaseUtil.getAmisMetarFrscListForWarnEvaluate(stnCd, sdf.format(anncTm), sdf.format(edEffctTm));
+			List<Map<String, Object>> metarObsDataList = this.evaluationDatabaseUtil.getAmisMetarObsDataList(stnCd, sdf.format(anncTm), sdf.format(edEffctTm));
 			
-			for(int i=0 ; i<metarFrscDataList.size() ; i++) {
+			for(int i=0 ; i<metarObsDataList.size() ; i++) {
 				
-				Map<String, Object> metarFrscData = metarFrscDataList.get(i);
+				Map<String, Object> metarObsData = metarObsDataList.get(i);
 					
-				Date metarTm = sdf.parse((String)metarFrscData.get("tm"));
+				Date metarTm = sdf.parse((String)metarObsData.get("tm"));
 				
-				Double frsc = (Double)metarFrscData.get("frsc");
+				Double frsc = (Double)metarObsData.get("frsc");
 				
 				if(frsc == null) {
 					continue;
@@ -785,8 +929,25 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
 				
 			} else if(arrYnList[1]) {
 				
@@ -815,9 +976,6 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			Date anncTm = warnEvaluationData.getEvaluationTm();
 			Date stEffctTm = warnEvaluationData.getStEffctTm();
 			Date edEffctTm = warnEvaluationData.getEdEffctTm();
-				
-			Double maxRn1Hr = 0d;
-			Double maxRn3Hr = 0d;
 			
 			// 구간별 경보 도달 여부
 			boolean[] arrYnList = new boolean[]{false, false};
@@ -827,6 +985,10 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 			
 			// 구간별 최초 현상 값
 			String[] firstArrValList = new String[]{null, null};
+			
+			double[] firstArrValRatioList = new double[]{0d, 0d};
+			
+			String[] firstArrValTypeList = new String[] {null, null};
 			
 			// 구간별 최종 관측 시각
 			Date[] lastObsTmList = new Date[]{null, null};
@@ -849,95 +1011,90 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				
 				tm = cal.getTime();
 				
-				Double rn1Hr = null;
 				Double rn3Hr = null;
+				Double rn12Hr = null;
 				
-				if(amosData.get("rn1hr") != null && amosData.get("rn3hr") != null) {
+				if(amosData.get("rn3hr") != null && amosData.get("rn12hr") != null) {
 					
-					rn1Hr = Double.valueOf(amosData.get("rn1hr").toString());
-					rn3Hr = Double.valueOf(amosData.get("rn3hr").toString());					
+					rn3Hr = Double.valueOf(amosData.get("rn3hr").toString());
+					rn12Hr = Double.valueOf(amosData.get("rn12hr").toString());					
 				}
 				
-				if(rn1Hr == null || rn3Hr == null) {
+				if(rn3Hr == null || rn12Hr == null) {
 					continue;
 				}
 				
-				maxRn1Hr = Math.max(maxRn1Hr, rn1Hr);
-				maxRn3Hr = Math.max(maxRn3Hr, rn3Hr);
-				
-				if(rn1Hr >= ra || rn3Hr >= ra + 20) {
+				if(rn3Hr >= ra || rn12Hr >= ra + 50) {
 					
 					arrYnList[0] = true;
 					
-					if(firstArrTmList[0] == null) {
+					if(rn3Hr >= ra) {			
 						
-						firstArrTmList[0] = tm;
-						lastObsTmList[0] = tm;
+						double ratio = rn3Hr / ra * 100;
 						
-						if(maxRn1Hr >= ra) {						
+						if(firstArrTmList[0] == null) {
+							firstArrTmList[0] = tm;
+							firstArrValList[0] = rn3Hr.toString();
+							firstArrValTypeList[0] = "3hr";
 							
-							firstArrValList[0] = rn1Hr.toString();
-							lastObsValList[0] = rn3Hr.toString();
-							
-						} else {
-							
-							firstArrValList[0] = rn1Hr.toString();
-							lastObsValList[0] = rn3Hr.toString();
-						}
-						
-					} else {
+							firstArrValRatioList[0] = ratio;
+						}							
 						
 						lastObsTmList[0] = tm;
+						lastObsValList[0] = rn3Hr.toString();						
+					} 
+					
+					if(rn12Hr >= ra + 50) {
 						
-						if(rn1Hr >= ra) {					
+						double ratio = rn12Hr / (ra+50) * 100;
+						
+						if(firstArrTmList[0] == null) {
+							firstArrTmList[0] = tm;
+							firstArrValList[0] = rn12Hr.toString();
+							firstArrValTypeList[0] = "12hr";
 							
-							lastObsValList[0] = rn1Hr.toString();
-							
-						} else {
-							
-							lastObsValList[0] = rn3Hr.toString();
+							firstArrValRatioList[0] = ratio;
 						}
+						
+						lastObsTmList[0] = tm;
+						lastObsValList[0] = rn3Hr.toString();
 					}
 					
-				} else if((rn1Hr < ra && rn1Hr >= ra-3) || 
-						  (rn3Hr < ra + 20 && rn3Hr >= ra + 20 -5)) {
+				} else if((rn3Hr < ra && rn3Hr >= 48) || 
+						  (rn12Hr < ra + 50 && rn12Hr >= 88)) {
 					
 					arrYnList[1] = true;
 					
-					if(firstArrTmList[1] == null) {
+					if(rn3Hr < ra && rn3Hr >= 48) {
 						
-						firstArrTmList[1] = tm;
-						lastObsTmList[0] = tm;
-						lastObsTmList[1] = tm;
+						double ratio = rn3Hr / ra * 100;
 						
-						if(rn1Hr < ra && rn1Hr >= ra-3) {
-							
-							firstArrValList[1] = rn1Hr.toString();
-							lastObsValList[0] = rn1Hr.toString();
-							lastObsValList[1] = rn1Hr.toString();
-							
-						} else {
-							
+						if(ratio > firstArrValRatioList[1]) {
+							firstArrTmList[1] = tm;
 							firstArrValList[1] = rn3Hr.toString();
-							lastObsValList[0] = rn3Hr.toString();
-							lastObsValList[1] = rn3Hr.toString();
+							firstArrValTypeList[1] = "3hr";
+							
+							firstArrValRatioList[1] = ratio;
 						}
 						
-					} else {
-						
-						lastObsTmList[0] = tm;
 						lastObsTmList[1] = tm;
+						lastObsValList[1] = rn3Hr.toString();						
+					} 
+
+					if(rn12Hr < ra + 50 && rn12Hr >= 88) {
 						
-						if(rn1Hr < ra && rn1Hr >= ra-3) {
+						double ratio = rn12Hr / (ra+50) * 100;
+						
+						if(ratio > firstArrValRatioList[1]) {
+							firstArrTmList[1] = tm;
+							firstArrValList[1] = rn12Hr.toString();
+							firstArrValTypeList[1] = "12hr";
 							
-							lastObsValList[0] = rn1Hr.toString();
-							lastObsValList[1] = rn1Hr.toString();
-							
-						} else {
-							
-							lastObsValList[0] = rn3Hr.toString();
-							lastObsValList[1] = rn3Hr.toString();
+							firstArrValRatioList[1] = ratio;
 						}
+						
+						lastObsTmList[1] = tm;
+						lastObsValList[1] = rn12Hr.toString();
 					}
 				}
 			}
@@ -947,15 +1104,37 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 				score.setEffct(50f);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[0]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[0]);
-				warnEvaluationData.setLastObsTm(lastObsTmList[0]);
-				warnEvaluationData.setLastObsVal(lastObsValList[0]);
+				
+				if(arrYnList[1]) {
+					
+					if(lastObsTmList[0].getTime() >= lastObsTmList[1].getTime()) {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+						warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+						
+					} else {
+						
+						warnEvaluationData.setLastObsTm(lastObsTmList[1]);
+						warnEvaluationData.setLastObsVal(lastObsValList[1]);	
+					}
+					
+				} else {
+					
+					warnEvaluationData.setLastObsTm(lastObsTmList[0]);
+					warnEvaluationData.setLastObsVal(lastObsValList[0]);	
+				}
 				
 			} else if(arrYnList[1]) {
 				
-				Float score1 = (float)(maxRn3Hr / (ra + 20) * 50);
-				Float score2 = (float)(maxRn1Hr / ra * 50);
+				Float effctScore = 0f;
 				
-				score.setEffct(Math.max(score1, score2));
+				if("12hr".equals(firstArrValTypeList[1])) {
+					effctScore = (float)(Float.valueOf(firstArrValList[1]) / (ra + 50) * 50);
+				} else {
+					effctScore = (float)(Float.valueOf(firstArrValList[1]) / (ra) * 50);
+				}
+				
+				score.setEffct(effctScore);
 				warnEvaluationData.setFirstArrTm(firstArrTmList[1]);
 				warnEvaluationData.setFirstArrVal(firstArrValList[1]);
 				warnEvaluationData.setLastObsTm(lastObsTmList[1]);
@@ -965,172 +1144,6 @@ public void evaluatePrev(WarnEvaluationData warnEvaluationData) {
 		} catch (Exception e) {
 			e.printStackTrace();
 			warnEvaluationData.setAvailable(false);
-		}
-	}
-	
-private List<Map<String, Object>> combineMetarLocalList(String stnCd, List<Map<String, Object>> metarInfoList, List<Map<String, Object>> localInfoList) throws Exception {
-		
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
-		
-		List<Map<String, Object>> obsInfoList = new ArrayList<Map<String, Object>>();
-		
-		for(int i=0 ; i<metarInfoList.size() ; i++) {
-			
-			Map<String, Object> obsInfo = new HashMap<String, Object>();
-			
-			Map<String, Object> metarInfo = metarInfoList.get(i);
-			
-			String metarString = (String)metarInfo.get("msgSrc");
-			
-			Date metarStdTm = sdf.parse((String)metarInfo.get("tm"));
-			
-			MetarData metarData = metarParser.parse(stnCd, metarString, metarStdTm);
-			
-			if(!metarData.isAvailable()) {
-				continue;
-			}
-			
-			MetarElement metarElement = metarData.getMetarElement();
-			
-			obsInfo.put("type", "METAR");
-			
-			obsInfo.put("tm", sdf.format(metarElement.getMetarTm()));
-			
-			List<String> skyConditionList = Arrays.asList(metarElement.getSkyCondition().split("\\s+"));
-			
-			obsInfo.put("skyCondition", metarElement.getSkyCondition());
-			obsInfo.put("skyConditionList", skyConditionList);
-			
-			Double metarVis = metarElement.isCavok() ? 9999d : metarElement.getVis();
-			
-			obsInfo.put("vis", metarVis);
-			
-			String cbString = "";
-			
-			for(String token : metarString.split("\\s+")) {
-				
-				if(token.matches("(SCT|FEW|BKN|OVC)([0-9]{3})(CB)")) {
-					cbString += token + " ";
-				}
-			}
-			
-			obsInfo.put("cbString", cbString.trim());
-			
-			Double lowestBknOvcHeight = null; 
-			
-			try {
-				
-				lowestBknOvcHeight = Double.valueOf(EvaluationUtils.getLowestBknOvcCloudHeight(metarElement));
-				
-			} catch (Exception e) {}
-					
-			if(lowestBknOvcHeight == null) {
-				continue;
-			}
-			
-			if(lowestBknOvcHeight != null) {
-				obsInfo.put("lowestBknOvcHeight", lowestBknOvcHeight);	
-			}
-			
-			obsInfoList.add(obsInfo);
-		}
-		
-		for(int i=0 ; i<localInfoList.size() ; i++) {
-			
-			Map<String, Object> obsInfo = new HashMap<String, Object>();
-			
-			Map<String, Object> localInfo = localInfoList.get(i);
-			
-			String localString = (String)localInfo.get("msgText");
-			
-			Date localStdTm = sdf.parse((String)localInfo.get("tm"));
-			
-			obsInfo.put("type", "LOCAL");
-			
-			obsInfo.put("tm", sdf.format(localStdTm));
-			
-			String mtph = (String)localInfo.get("mtph");
-			
-			obsInfo.put("skyCondition", mtph == null ? "" : mtph);
-			
-			if(mtph == null) {
-				obsInfo.put("skyConditionList", new ArrayList<String>());
-			} else {
-				obsInfo.put("skyConditionList", Arrays.asList((mtph).split("\\s+")));
-			}
-			
-			if(localInfo.get("vis") != null) {
-				
-				Double localVis = Double.valueOf((String)localInfo.get("vis"));
-				
-				obsInfo.put("vis", localVis);
-			}
-			
-			String cbString = "";
-			
-			for(String token : localString.split("\\s+")) {
-				
-				if(token.matches("(SCT|FEW|BKN|OVC)([0-9]{3})(CB)")) {
-					cbString += token + " ";
-				}
-			}
-			
-			obsInfo.put("cbString", cbString.trim());
-			
-			Double lowestBknOvcHeight = this.getLocalLowestBknOvcCloudHeight(localString);
-			
-			if(lowestBknOvcHeight != null) {
-				obsInfo.put("lowestBknOvcHeight", lowestBknOvcHeight);	
-			}
-			
-			obsInfoList.add(obsInfo);
-		}
-		
-		Collections.sort(obsInfoList, new Comparator<Map<String, Object>>(){
-
-			@Override
-			public int compare(Map<String, Object> arg0, Map<String, Object> arg1) {
-				
-				return ((String)arg0.get("tm")).compareTo((String)arg1.get("tm"));
-			}
-		});
-		
-		return obsInfoList;
-	}
-	
-	private Double getLocalLowestBknOvcCloudHeight(String msgText) {
-		
-		List<String> tokenList = Arrays.asList(msgText.split("\\s+"));
-		
-		int cldIndex = tokenList.indexOf("CLD");
-		
-		List<String> bknOvcList = new ArrayList<String>();
-		List<Double> heightList = new ArrayList<Double>();
-		
-		if(cldIndex >= 0) {
-
-			for(int i=cldIndex ; i<tokenList.size() ; i++) {
-			
-				try {
-					
-					String cloudKind = tokenList.get(i);
-					
-					if("BKN".equals(cloudKind) || "OVC".equals(cloudKind)) {
-					
-						bknOvcList.add(cloudKind);
-						heightList.add(Double.valueOf(tokenList.get(i+1).replaceAll("FT", "")));
-					}
-					
-				} catch (Exception e) {
-					
-				}
-			}
-		}
-		
-		if(heightList.size() > 0) {
-			return heightList.get(0);
-		} else {
-			return null;
 		}
 	}
 }

@@ -4,13 +4,19 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import kama.daemon.eval.lf.LfElement;
+import kama.daemon.eval.metar.MetarData;
 import kama.daemon.eval.metar.MetarElement;
+import kama.daemon.eval.metar.MetarParser;
 import kama.daemon.eval.taf.TafElement;
 
 public class EvaluationUtils {
@@ -84,7 +90,16 @@ public class EvaluationUtils {
 	public static List<String> getAirportStnCdListForEvalTaf() {
 		
 		String[] stnCds = new String[]{
-			"RKSI","RKNY","RKJY","RKSS","RKPC","RKJB","RKPU","RKPK","RKTU","RKTN","RKJJ","RKTH","RKPS","RKNW"				
+			"RKSI","RKNY","RKJY","RKSS","RKPC","RKJB","RKPU","RKPK","RKTU","RKTN","RKJJ","RKTH","RKPS","RKNW"			
+		};
+		
+		return Arrays.asList(stnCds);
+	}
+	
+	public static List<String> getAirportStnCdListForPostAnalTaf() {
+		
+		String[] stnCds = new String[]{
+			"RKSI","RKNY","RKJY","RKSS","RKPC","RKJB","RKPU","RKPK","RKTU","RKTN","RKJJ","RKTH","RKPS","RKNW"			
 		};
 		
 		return Arrays.asList(stnCds);
@@ -111,7 +126,7 @@ public class EvaluationUtils {
 	public static List<String> getAirportStnCdListForEvalWarn() {
 		
 		String[] stnCds = new String[]{
-			"RKSI"/*,"RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"*/
+			"RKSI","RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"
 		};
 		
 		return Arrays.asList(stnCds);
@@ -253,7 +268,7 @@ public class EvaluationUtils {
 	public static void filterLandingForcasts(List<Map<String, Object>> lfInfoList, String stnCd) {
 		
 		int sHour = 0;
-		int eHour = 23;
+		int eHour = 24;
 		
 		switch(stnCd) {
 		
@@ -271,7 +286,7 @@ public class EvaluationUtils {
 			break;
 		case "RKJY":
 			sHour = 22;
-			eHour = 9;
+			eHour = 8;		// 25.03.30 19시 이후로 9 -> 8시로 변경
 			break;
 		}
 		
@@ -291,8 +306,11 @@ public class EvaluationUtils {
 			
 			_hour++;
 			
-			if(_hour >= 24) {
-				_hour -= 24;
+			if(eHour < 24) {
+				
+				if(_hour >= 24) {
+					_hour -= 24;
+				}
 			}
 		}
 		
@@ -355,7 +373,7 @@ public class EvaluationUtils {
 	public static void filterDepartureForcasts(List<Map<String, Object>> dfInfoList, String stnCd) {
 		
 		int sHour = 0;
-		int eHour = 23;
+		int eHour = 24;
 		
 		switch(stnCd) {
 		
@@ -373,7 +391,7 @@ public class EvaluationUtils {
 			break;
 		case "RKJY":
 			sHour = 01;
-			eHour = 14;
+			eHour = 13;		// 25.03.30 19시 이후로 14 -> 13시로 변경
 			break;	
 		case "RKPK":
 			sHour = 23;
@@ -417,8 +435,11 @@ public class EvaluationUtils {
 			
 			_hour++;
 			
-			if(_hour >= 24) {
-				_hour -= 24;
+			if(eHour < 24) {
+				
+				if(_hour >= 24) {
+					_hour -= 24;
+				}
 			}
 		}
 		
@@ -456,7 +477,7 @@ public class EvaluationUtils {
 	public static void filterAirportForcasts(List<Map<String, Object>> metarInfoList, String stnCd) {
 			
 		int sHour = 0;
-		int eHour = 23;
+		int eHour = 24;
 		
 		switch(stnCd) {
 		
@@ -494,8 +515,11 @@ public class EvaluationUtils {
 			
 			_hour++;
 			
-			if(_hour >= 24) {
-				_hour -= 24;
+			if(eHour < 24) {
+				
+				if(_hour >= 24) {
+					_hour -= 24;
+				}
 			}
 		}
 		
@@ -713,6 +737,11 @@ public class EvaluationUtils {
 		return String.format("EVAL_%015d", Integer.valueOf(seq));
 	}
 	
+	public static String createTafPostAnalId(String seq) {
+		
+		return String.format("POST_ANAL_%010d", Integer.valueOf(seq));
+	}
+	
 	public static String createLfEvaluationId(String seq) {
 		
 		return String.format("EVAL_%015d", Integer.valueOf(seq));
@@ -726,5 +755,306 @@ public class EvaluationUtils {
 	public static String createWarnEvaluationId(String seq) {
 		
 		return String.format("EVAL_%015d", Integer.valueOf(seq));
+	}
+	
+	public static int compareSfcWspdRatio(String val1, String val2, Double wspd, Double maxWspd) {
+		
+		String[] vals = new String[] {
+			val1, val2	
+		};
+		
+		double[] ratios = new double[2];
+		
+		for(int i=0 ; i<vals.length ; i++) {
+			
+			String val = vals[i];
+			
+			double ratio = 0d;
+			
+			if(val.startsWith("G")) {				
+				ratio = Double.valueOf(val.substring(1)) / maxWspd * 100;
+			} else {
+				ratio = Double.valueOf(val) / maxWspd * 100;
+			}			
+			
+			ratios[i] = ratio;
+		}
+		
+		if(ratios[0] > ratios[1]) {
+			return 1;
+		} else {
+			return 2;
+		}
+	}
+	
+	public static Double findAmosMaxValue(List<Map<String, Object>> subAmosDataList, String valueKey) {
+		
+		Double maxValue = Double.MIN_VALUE;
+		
+		for(int i=0 ; i<subAmosDataList.size() ; i++) {
+			
+			Map<String, Object> amosData = subAmosDataList.get(i);
+			
+			if(amosData.get(valueKey) == null) {
+				continue;
+			}
+			
+			Double value = Double.valueOf(amosData.get(valueKey).toString());		
+			
+			maxValue = Math.max(maxValue, value);
+		}
+		
+		return maxValue;
+	}
+	
+	public static Double findAmosMinValue(List<Map<String, Object>> subAmosDataList, String valueKey) {
+		
+		Double minValue = Double.MAX_VALUE;
+		
+		for(int i=0 ; i<subAmosDataList.size() ; i++) {
+			
+			Map<String, Object> amosData = subAmosDataList.get(i);
+			
+			if(amosData.get(valueKey) == null) {
+				continue;
+			}
+			
+			Double value = Double.valueOf(amosData.get(valueKey).toString());		
+			
+			minValue = Math.min(minValue, value);
+		}
+		
+		return minValue;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<Map<String, Object>> splitAmosDatabyTm(List<Map<String, Object>> amosDataList) {
+		
+		List<Map<String, Object>> splitAmosDataList = new ArrayList<Map<String, Object>>();
+		
+		Map<String, Object> amosDataMap = new HashMap<String, Object>();
+		
+		for(int i=0 ; i<amosDataList.size() ; i++) {
+			
+			Map<String, Object> amosData = amosDataList.get(i);
+			
+			String tm = (String)amosData.get("tm");
+			
+			List<Map<String, Object>> subAmosDataList = null;
+			
+			if(amosDataMap.get(tm) == null) {
+				
+				subAmosDataList = new ArrayList<Map<String, Object>>();
+				amosDataMap.put(tm, subAmosDataList);				
+				
+			} else {
+				subAmosDataList = (List<Map<String, Object>>)amosDataMap.get(tm);
+			}
+			
+			subAmosDataList.add(amosData);
+		}
+		
+		Iterator<String> iter = amosDataMap.keySet().iterator();
+		
+		while(iter.hasNext()) {
+			
+			List<Map<String, Object>> subAmosDataList = (List<Map<String, Object>>)amosDataMap.get(iter.next());
+			
+			String tm = null;
+			
+			if(subAmosDataList.size() > 0) {
+				
+				tm = subAmosDataList.get(0).get("tm").toString();
+				
+				Map<String, Object> map = new HashMap<String, Object>();
+				
+				map.put("tm", tm);
+				map.put("list", subAmosDataList);
+				
+				splitAmosDataList.add(map);
+			}
+		}
+		
+		Collections.sort(splitAmosDataList, new Comparator() {
+
+			@Override
+			public int compare(Object arg0, Object arg1) {
+				
+				String tm0 = ((Map<String, Object>)arg0).get("tm").toString();
+				String tm1 = ((Map<String, Object>)arg1).get("tm").toString();
+				
+				return tm0.compareTo(tm1);
+			}
+		});
+		
+		return splitAmosDataList;
+	}
+	
+	public static List<Map<String, Object>> combineMetarLocalList(MetarParser metarParser, String stnCd, List<Map<String, Object>> metarInfoList, List<Map<String, Object>> localInfoList) throws Exception {
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
+		
+		List<Map<String, Object>> obsInfoList = new ArrayList<Map<String, Object>>();
+		
+		for(int i=0 ; i<metarInfoList.size() ; i++) {
+			
+			Map<String, Object> obsInfo = new HashMap<String, Object>();
+			
+			Map<String, Object> metarInfo = metarInfoList.get(i);
+			
+			String metarString = (String)metarInfo.get("msgSrc");
+			
+			Date metarStdTm = sdf.parse((String)metarInfo.get("tm"));
+			
+			MetarData metarData = metarParser.parse(stnCd, metarString, metarStdTm);
+			
+			if(!metarData.isAvailable()) {
+				continue;
+			}
+			
+			MetarElement metarElement = metarData.getMetarElement();
+			
+			obsInfo.put("type", "METAR");
+			
+			obsInfo.put("tm", sdf.format(metarElement.getMetarTm()));
+			
+			List<String> skyConditionList = Arrays.asList(metarElement.getSkyCondition().split("\\s+"));
+			
+			obsInfo.put("skyCondition", metarElement.getSkyCondition());
+			obsInfo.put("skyConditionList", skyConditionList);
+			
+			Double metarVis = metarElement.isCavok() ? 9999d : metarElement.getVis();
+			
+			obsInfo.put("vis", metarVis);
+			
+			String cbString = "";
+			
+			for(String token : metarString.split("\\s+")) {
+				
+				if(token.matches("(SCT|FEW|BKN|OVC)([0-9]{3})(CB)")) {
+					cbString += token + " ";
+				}
+			}
+			
+			obsInfo.put("cbString", cbString.trim());
+			
+			Double lowestBknOvcHeight = null; 
+			
+			try {
+				
+				lowestBknOvcHeight = Double.valueOf(EvaluationUtils.getLowestBknOvcCloudHeight(metarElement));
+				
+			} catch (Exception e) {}
+			
+			obsInfoList.add(obsInfo);
+			
+			if(lowestBknOvcHeight == null) {
+				continue;
+			}
+			
+			if(lowestBknOvcHeight != null) {
+				obsInfo.put("lowestBknOvcHeight", lowestBknOvcHeight);	
+			}
+		}
+		
+		for(int i=0 ; i<localInfoList.size() ; i++) {
+			
+			Map<String, Object> obsInfo = new HashMap<String, Object>();
+			
+			Map<String, Object> localInfo = localInfoList.get(i);
+			
+			String localString = (String)localInfo.get("msgText");
+			
+			Date localStdTm = sdf.parse((String)localInfo.get("tm"));
+			
+			obsInfo.put("type", "LOCAL");
+			
+			obsInfo.put("tm", sdf.format(localStdTm));
+			
+			String mtph = (String)localInfo.get("mtph");
+			
+			obsInfo.put("skyCondition", mtph == null ? "" : mtph);
+			
+			if(mtph == null) {
+				obsInfo.put("skyConditionList", new ArrayList<String>());
+			} else {
+				obsInfo.put("skyConditionList", Arrays.asList((mtph).split("\\s+")));
+			}
+			
+			if(localInfo.get("vis") != null) {
+				
+				Double localVis = Double.valueOf((String)localInfo.get("vis"));
+				
+				obsInfo.put("vis", localVis);
+			}
+			
+			String cbString = "";
+			
+			localString = localString.replaceAll("RMK(.+)", "");
+			
+			for(String token : localString.split("\\s+")) {
+				
+				if(token.matches("(CB)|(SCT|FEW|BKN|OVC)([0-9]{3})(CB)")) {
+					cbString += token + " ";
+				}
+			}
+			
+			obsInfo.put("cbString", cbString.trim());
+			
+			Double lowestBknOvcHeight = getLocalLowestBknOvcCloudHeight(localString);
+			
+			if(lowestBknOvcHeight != null) {
+				obsInfo.put("lowestBknOvcHeight", lowestBknOvcHeight);	
+			}
+			
+			obsInfoList.add(obsInfo);
+		}
+		
+		Collections.sort(obsInfoList, new Comparator<Map<String, Object>>(){
+
+			@Override
+			public int compare(Map<String, Object> arg0, Map<String, Object> arg1) {
+				
+				return ((String)arg0.get("tm")).compareTo((String)arg1.get("tm"));
+			}
+		});
+		
+		return obsInfoList;
+	}
+	
+	public static Double getLocalLowestBknOvcCloudHeight(String msgText) {
+		
+		List<String> tokenList = Arrays.asList(msgText.split("\\s+"));
+		
+		int cldIndex = tokenList.indexOf("CLD");
+		
+		List<String> bknOvcList = new ArrayList<String>();
+		List<Double> heightList = new ArrayList<Double>();
+		
+		if(cldIndex >= 0) {
+
+			for(int i=cldIndex ; i<tokenList.size() ; i++) {
+			
+				try {
+					
+					String cloudKind = tokenList.get(i);
+					
+					if("BKN".equals(cloudKind) || "OVC".equals(cloudKind)) {
+					
+						bknOvcList.add(cloudKind);
+						heightList.add(Double.valueOf(tokenList.get(i+1).replaceAll("FT", "")));
+					}
+					
+				} catch (Exception e) {
+					
+				}
+			}
+		}
+		
+		if(heightList.size() > 0) {
+			return heightList.get(0);
+		} else {
+			return null;
+		}
 	}
 }

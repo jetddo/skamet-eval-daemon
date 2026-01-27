@@ -34,9 +34,7 @@ public class DecodeAmisTaf_Process extends DaemonProcess {
 		encryptor.setPassword("pwkey");
 		
 		try {
-
 			
-			System.out.println(encryptor.decrypt(this.config.getString("db.oracle.amis.password")));
 			this.aamiDBManager = new DataBaseManager(
 						this.config.getString("db.oracle.aami.username"), 
 						encryptor.decrypt(this.config.getString("db.oracle.aami.password")), 
@@ -67,7 +65,7 @@ public class DecodeAmisTaf_Process extends DaemonProcess {
 	}
 
 	@Override
-	public void process(Configuration config) {
+	public void process(Configuration config, Map<String, String> reqMap) {
 		
 		this.config = config;
 		

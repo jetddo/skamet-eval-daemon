@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class MetarData {
 	
-private boolean isAvailable = true;
+	private boolean isAvailable = true;
 	
 	private String metarSource;
 	

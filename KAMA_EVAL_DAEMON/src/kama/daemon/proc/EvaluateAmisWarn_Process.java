@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.configuration2.Configuration;
+import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
+
 import kama.daemon.db.DataBaseManager;
 import kama.daemon.db.EvaluationDatabaseUtil;
 import kama.daemon.eval.WarnEvaluation;
@@ -17,9 +20,6 @@ import kama.daemon.eval.warn.WarnData;
 import kama.daemon.eval.warn.WarnParser;
 import kama.daemon.util.DatabaseUtil;
 import kama.daemon.util.EvaluationUtils;
-
-import org.apache.commons.configuration2.Configuration;
-import org.jasypt.encryption.pbe.StandardPBEStringEncryptor;
 
 public class EvaluateAmisWarn_Process extends DaemonProcess {
 	
@@ -35,6 +35,8 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 	private DataBaseManager amisDBManager;
 	
 	private EvaluationDatabaseUtil evaluationDatabaseUtil;
+	
+	private Map<String, String> reqMap;
 	
 	private boolean initialize() {
 		
@@ -80,9 +82,10 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 	}
 
 	@Override
-	public void process(Configuration config) {
+	public void process(Configuration config, Map<String, String> reqMap) {
 		
 		this.config = config;
+		this.reqMap = reqMap;
 		
 		System.out.println(":: Start Initialize");
 		
@@ -127,10 +130,21 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			// 시작일은 3일을 뺀다, UTC 이므로 9를 더뺌
 			cal.add(Calendar.HOUR_OF_DAY, -72-9);
 			
-			String startTmStr = "202411250000";//sdf.format(cal.getTime());
+			String startTmStr = sdf.format(cal.getTime());
 			cal.add(Calendar.HOUR_OF_DAY, 24);
 			// 종료일은 시작일에서 1일을 더한다
-			String endTmStr = "202411270000";//sdf.format(cal.getTime());
+			String endTmStr = sdf.format(cal.getTime());
+			
+			if(this.reqMap != null) {
+				
+				String s = this.reqMap.get("-s");
+				String e = this.reqMap.get("-e");
+				
+				if(s != null && e != null) {
+					startTmStr = s;
+					endTmStr = e;
+				}
+			}
 			
 			System.out.println(":: START DATE: " + startTmStr);
 			System.out.println(":: END DATE: " + endTmStr);
@@ -139,18 +153,18 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			
 			try {
 				
-				Integer[] evalVerList = new Integer[]{1/*, 2*/};
+				Integer[] evalVerList = new Integer[]{1,2};
 				
 				for(Integer evalVer : evalVerList) {
 					
-					//System.out.println(":: START WARN EVALUATION VERSION: " + evalVer);
+					System.out.println(":: START WARN EVALUATION VERSION: " + evalVer);
 				
 					List<Map<String, Object>> warnEvaluationInfoList = this.getWarnEvaluationInfoList(warnInfoList, stnCd, evalVer);
 					
 					if(warnEvaluationInfoList != null) {
 						
 						for(int j=0 ; j<warnEvaluationInfoList.size() ; j++) {
-							//this.insertEvaluationResult(warnEvaluationInfoList.get(j), evalVer);	
+							this.insertEvaluationResult(warnEvaluationInfoList.get(j), evalVer);	
 						}
 					}
 				}
@@ -183,23 +197,37 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 		Integer warnNum = warnData.getWarnNum();
 		
 		String evalTmStr = sdf.format(warnData.getAnncTm());
-		String stEffctTmStr = sdf.format(warnData.getStEffctTm());
-		String edEffctTmStr = sdf.format(warnData.getEdEffctTm());		
+		String stEffctTmStr = null;
+		String edEffctTmStr = null;
+		
+		try {
+			
+			stEffctTmStr = sdf.format(warnEvaluationData.getStEffctTm());
+			edEffctTmStr = sdf.format(warnEvaluationData.getEdEffctTm());	
+			
+		} catch (Exception e) {
+			
+			stEffctTmStr = sdf.format(warnData.getStEffctTm());
+			edEffctTmStr = sdf.format(warnData.getEdEffctTm());	
+		}		
+		
 		String stCnlTmStr = warnData.getStCnlTm() == null ? null : sdf.format(warnData.getStCnlTm());
 		String edCnlTmStr = warnData.getEdCnlTm() == null ? null : sdf.format(warnData.getEdCnlTm());
+		String stExtTmStr = warnData.getStExtTm() == null ? null : sdf.format(warnData.getStExtTm());
+		String edExtTmStr = warnData.getEdExtTm() == null ? null : sdf.format(warnData.getEdExtTm());
 		
 		System.out.println("->\t Insert Warn Msg ...");
 		
 		System.out.println("->\t Check Duplicated Row ...");
 		
-		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getWarnResultCount(stnCd, evalTmStr, evalVer, warnTypeCode);
+		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getWarnEvalResultCount(stnCd, evalTmStr, evalVer, warnTypeCode);
 		
 		if(dupEvalUIDList != null && dupEvalUIDList.size() >= 0) {
 			
 			System.out.println("->\t\t Find Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			System.out.println("->\t\t Delete Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			
-			this.evaluationDatabaseUtil.removeWarnResultData(dupEvalUIDList);
+			this.evaluationDatabaseUtil.removeWarnEvalResultData(dupEvalUIDList);
 		}	
 		
 		if(warnEvaluationData != null) {
@@ -281,6 +309,9 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 		paramList.add(warnData.isAutoCancel() ? "Y" : "N");
 		paramList.add(warnData.isPrevCancel() ? "Y" : "N");
 		
+		paramList.add(warnData.getWarnSource());
+		paramList.add(warnData.getInfWarnSources());
+		
 		if(this.evaluationDatabaseUtil.insertEvalWarnResult(paramList) < 0) {
 			this.aamiDBManager.rollback();
 			return;
@@ -307,7 +338,6 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 				Date stdTm = sdf.parse((String)warnInfo.get("tm"));
 				String warnSource = (String)warnInfo.get("msgText");
 				String inpNm = (String)warnInfo.get("inpNm");
-
 				
 				WarnData warnData = this.warnParser.parse(stnCd, warnSource, stdTm);
 				warnData.setInpNm(inpNm);

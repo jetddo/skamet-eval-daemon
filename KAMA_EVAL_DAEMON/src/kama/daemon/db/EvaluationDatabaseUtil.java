@@ -50,6 +50,16 @@ public class EvaluationDatabaseUtil {
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
 	}
 	
+	public int insertPostAnalTafResult(List<Object> paramList) {
+			
+		final String query = 
+				"INSERT INTO AAMI." + this.tablePrefix + "POST_ANAL_TAF_RESULT VALUES (''{0}'',''{1}'',TO_DATE(''{2}'', ''YYYYMMDDHH24MI''),"+ 
+				 "TO_DATE(''{3}'', ''YYYYMMDDHH24MI''),TO_DATE(''{4}'', ''YYYYMMDDHH24MI''),''{5}'', ''{6}'', sysdate, ''{7}'',''{8}'',"+ 
+				 "''{9}'',''{10}'',''{11}'', null, 0)"; 
+		
+		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
+	}
+	
 	public int insertEvalTafResultDetail(List<Object> paramList) {
 		
 		final String query = 
@@ -59,6 +69,14 @@ public class EvaluationDatabaseUtil {
 				 "''{37}'',''{38}'',''{39}'',''{40}'',''{41}'',''{42}'',''{43}'',''{44}'',''{45}'',''{46}'',''{47}'',''{48}'',''{49}'',''{50}'',''{51}'',''{52}'',"+ 
 				 "''{53}'',''{54}'',''{55}'',''{56}'',''{57}'',''{58}'',''{59}'',''{60}'',''{61}'',''{62}'',''{63}'',''{64}'',''{65}'',''{66}'',''{67}'',''{68}'',"+ 
 				 "''{69}'',''{70}'',''{71}'',''{72}'',''{73}'',''{74}'',''{75}'',''{76}'',''{77}'',''{78}'',''{79}'',''{80}'',''{81}'',''{82}'')"; 
+		
+		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
+	}
+	
+	public int insertPostAnalTafResultDetail(List<Object> paramList) {
+		
+		final String query = 
+				"INSERT INTO AAMI." + this.tablePrefix + "POST_ANAL_TAF_RESULT_DETAIL VALUES (''{0}'',TO_DATE(''{1}'', ''YYYYMMDDHH24MI''),''{2}'',''{3}'',''{4}'',''{5}'')"; 
 		
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
 	}
@@ -92,7 +110,7 @@ public class EvaluationDatabaseUtil {
 		}).replace("'null'", "null"));
 	}
 	
-	public List<String> getTafResultCount(String stnCd, String fcstKind, String msgSts, String anncTmStr, int evalVer, int becmgType) {
+	public List<String> getTafEvalResultCount(String stnCd, String fcstKind, String msgSts, String anncTmStr, int evalVer, int becmgType) {
 		
 		final String query = 
 				"SELECT EVAL_UID FROM AAMI." + this.tablePrefix + "EVAL_TAF_RESULT WHERE STN_CD = ''{0}'' AND FCST_KIND = ''{1}'' AND MSG_STS = ''{2}'' AND EVAL_TM = TO_DATE(''{3}'', ''YYYYMMDDHH24MI'') AND EVAL_VER = {4} AND BECMG_TYPE = {5}";
@@ -115,7 +133,30 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
-	public void removeTafResultData(List<String> evalUIDList) {
+	public List<String> getTafPostAnalResultCount(String stnCd, String fcstKind, String msgSts, String anncTmStr) {
+		
+		final String query = 
+				"SELECT POST_ANAL_UID FROM AAMI." + this.tablePrefix + "POST_ANAL_TAF_RESULT WHERE STN_CD = ''{0}'' AND FCST_KIND = ''{1}'' AND MSG_STS = ''{2}'' AND POST_ANAL_TM = TO_DATE(''{3}'', ''YYYYMMDDHH24MI'')";
+		
+		List<Map<String, Object>> resultList = this.aamiDBManager.selectWithCamelcase(MessageFormat.format(query, new Object[]{
+			stnCd, fcstKind, msgSts, anncTmStr	
+		}));
+		
+		List<String> postAnalUIDList = new ArrayList<String>();
+		
+		if(resultList != null) {
+			
+			for(int i=0 ; i<resultList.size() ; i++) {
+				postAnalUIDList.add((String)resultList.get(i).get("postAnalUid"));
+			}
+			
+			return postAnalUIDList;
+		} else {
+			return null;
+		}
+	}
+	
+	public void removeTafEvalResultData(List<String> evalUIDList) {
 		
 		final String queryTafMsg = "DELETE " + this.tablePrefix + "EVAL_TAF_TAF_MSG WHERE EVAL_UID = ''{0}''";
 		final String queryMetarMsg = "DELETE " + this.tablePrefix + "EVAL_TAF_METAR_MSG WHERE EVAL_UID = ''{0}''";
@@ -138,6 +179,23 @@ public class EvaluationDatabaseUtil {
 			
 			this.aamiDBManager.delete(MessageFormat.format(queryEvalResult, new Object[]{
 				evalUIDList.get(i)	
+			}));
+		}	
+	}
+	
+	public void removeTafPostAnalResultData(List<String> postAnalUIDList) {
+		
+		final String queryPostAnalResultDetail = "DELETE " + this.tablePrefix + "POST_ANAL_TAF_RESULT_DETAIL WHERE POST_ANAL_UID = ''{0}''";
+		final String queryPostAnalResult = "DELETE " + this.tablePrefix + "POST_ANAL_TAF_RESULT WHERE POST_ANAL_UID = ''{0}''";
+		
+		for(int i=0 ; i<postAnalUIDList.size() ; i++) {
+			
+			this.aamiDBManager.delete(MessageFormat.format(queryPostAnalResultDetail, new Object[]{
+				postAnalUIDList.get(i)	
+			}));
+			
+			this.aamiDBManager.delete(MessageFormat.format(queryPostAnalResult, new Object[]{
+				postAnalUIDList.get(i)	
 			}));
 		}	
 	}
@@ -168,6 +226,17 @@ public class EvaluationDatabaseUtil {
 	public String getEvaluationNextSeq(String type) {
 		
 		final String query = "SELECT AAMI." + this.tablePrefix + "EVAL_"+type+"_SEQ.NEXTVAL AS NEXT_SEQ FROM DUAL";
+		
+		Map<String, Object> result = this.aamiDBManager.selectOneWithCamelcase(query);
+			
+		String nextSeq = result.get("nextSeq").toString();
+		
+		return nextSeq;
+	}
+	
+	public String getPostAnalNextSeq(String type) {
+		
+		final String query = "SELECT AAMI." + this.tablePrefix + "POST_ANAL_"+type+"_SEQ.NEXTVAL AS NEXT_SEQ FROM DUAL";
 		
 		Map<String, Object> result = this.aamiDBManager.selectOneWithCamelcase(query);
 			
@@ -258,6 +327,33 @@ public class EvaluationDatabaseUtil {
 		return this.amisDBManager.selectWithCamelcase(query);
 	}
 	
+	public List<Map<String, Object>> getAmisTafInfoListForPostAnal(String stnCd, String msgType, String startTmStr, String endTmStr) {
+		
+		final String query = " SELECT "+ 
+							 " 	TO_CHAR(TM, 'YYYYMMDDHH24MI') AS TM, "+ 
+							 " 	STN_CD AS STN_CD, "+
+							 " 	FCST_KND AS MSG_TYPE, "+
+							 "  MSG_STS AS MSG_STS, "+
+							 "  '00/00' AS VALID_TM, "+
+							 " 	MSG_TEXT AS MSG_SRC, "+
+							 "  STN_CD AS SENDER, "+
+							 "  TO_CHAR(INP_TM, 'YYYYMMDDHH24MI') AS TM_IN, " +
+							 "  INP_NM AS INP_NM" +
+							 " FROM AMISUSER.TAF "+
+							 " WHERE 1=1 "+
+							 " AND STN_CD = '" + stnCd + "'"+
+							 " AND FCST_KND = '" + msgType + "'"+
+							 " AND TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI') "+ 
+							 " AND TM <= TO_DATE('" + endTmStr + "', 'YYYYMMDDHH24MI') "+
+							 " AND MSG_TEXT NOT LIKE '%DUE%'"+
+							 " AND MSG_TEXT NOT LIKE '%CNL%'"+							 
+							 " AND ANNNC_DVSN NOT IN (3,4) "+
+							 " AND (TO_CHAR(TM, 'HH24MI') LIKE '%'||'2300' OR TO_CHAR(TM, 'HH24MI') LIKE '%'||'0000' )"+
+							 " ORDER BY TM ASC ";
+		
+		return this.amisDBManager.selectWithCamelcase(query);
+	}
+	
 	public Map<String, Object> getAmisTafInfo(String stnCd, String stdTmStr, String msgType) {
 		
 		final String query = " SELECT "+ 
@@ -296,6 +392,7 @@ public class EvaluationDatabaseUtil {
 							" FROM AMISUSER.METAR_MSG A                                             "+
 							" INNER JOIN AMISUSER.METAR B                                           "+
 							" ON A.TM = B.TM AND A.STN_CD = B.STN_CD AND A.MSG_TYPE = B.MSG_TYPE    "+
+							" AND A.MSG_STS = B.MSG_STS												"+				
 							" WHERE A.MSG_TYPE IN ('METARSCIAL', 'SPECI', 'METAR', 'METARSPECI')    "+
 							" AND A.STN_CD = '" + stnCd + "'                                        "+
 							" AND A.TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI')           "+
@@ -306,6 +403,16 @@ public class EvaluationDatabaseUtil {
 							" ORDER BY A.TM ASC                                                     ";
 		
 		List<Map<String, Object>> resultList = this.amisDBManager.selectWithCamelcase(query);
+		
+		for(int i=0 ; i<resultList.size() ; i++) {
+			
+			Map<String, Object> metarInfo = resultList.get(i);
+			
+			// 20250103 수정
+			if("202412201230".equals(metarInfo.get("tm")) && !"CCA".equals(metarInfo.get("msgSts"))) {
+				resultList.remove(i--);
+			}
+		}
 		
 		if(resultList != null) {
 			
@@ -348,7 +455,7 @@ public class EvaluationDatabaseUtil {
 	
 	//////// LF ///////
 	
-	public List<String> getLfResultCount(String stnCd, String msgType, String msgSts, String anncTmStr, int evalVer) {
+	public List<String> getLfEvalResultCount(String stnCd, String msgType, String msgSts, String anncTmStr, int evalVer) {
 		
 		final String query = 
 				"SELECT EVAL_UID FROM AAMI." + this.tablePrefix + "EVAL_LF_RESULT WHERE STN_CD = ''{0}'' AND MSG_TYPE = ''{1}'' AND MSG_STS = ''{2}'' AND EVAL_TM = TO_DATE(''{3}'', ''YYYYMMDDHH24MI'') AND EVAL_VER = {4}";
@@ -371,7 +478,7 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
-	public void removeLfResultData(List<String> evalUIDList) {
+	public void removeLfEvalResultData(List<String> evalUIDList) {
 		
 		final String queryLfMsg = "DELETE " + this.tablePrefix + "EVAL_LF_LF_MSG WHERE EVAL_UID = ''{0}''";
 		final String queryMetarMsg = "DELETE " + this.tablePrefix + "EVAL_LF_METAR_MSG WHERE EVAL_UID = ''{0}''";
@@ -581,7 +688,7 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
-	public List<String> getDfResultCount(String stnCd, String anncTmStr, int evalVer) {
+	public List<String> getDfEvalResultCount(String stnCd, String anncTmStr, int evalVer) {
 		
 		final String query = 
 				"SELECT EVAL_UID FROM AAMI." + this.tablePrefix + "EVAL_DF_RESULT WHERE STN_CD = ''{0}'' AND EVAL_TM = TO_DATE(''{1}'', ''YYYYMMDDHH24MI'') AND EVAL_VER = {2}";
@@ -604,7 +711,7 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
-	public void removeDfResultData(List<String> evalUIDList) {
+	public void removeDfEvalResultData(List<String> evalUIDList) {
 		
 		final String queryMetarMsg = "DELETE " + this.tablePrefix + "EVAL_DF_METAR_MSG WHERE EVAL_UID = ''{0}''";
 		final String queryEvalResultDetail = "DELETE " + this.tablePrefix + "EVAL_DF_RESULT_DETAIL WHERE EVAL_UID = ''{0}''";
@@ -677,7 +784,8 @@ public class EvaluationDatabaseUtil {
 							 " WSPD_10MIN_AVG/10 AS WSPD_10MIN_AVG, "+
 							 " WSPD_1MIN_MAX/10 AS WSPD_1MIN_MAX, "+
 							 " RN_1HR/10 AS RN_1HR, "+
-							 " RN_3HR/10 AS RN_3HR "+
+							 " RN_3HR/10 AS RN_3HR, "+
+							 " RN_12HR/10 AS RN_12HR "+
 							 " FROM AMISUSER.AMOS "+ 
 							 " WHERE 1=1 "+
 							 " AND TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI') + 9/24 "+
@@ -733,31 +841,53 @@ public class EvaluationDatabaseUtil {
 		return resultList;
 	}
 	
-	public List<Map<String, Object>> getAmisMetarFrscListForWarnEvaluate(String stnCd, String startTmStr, String endTmStr) {
+	public List<Map<String, Object>> getAmisMetarObsDataList(String stnCd, String startTmStr, String endTmStr) {
 		
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
-		
-		final String query = " SELECT "+ 
-				 " 	TO_CHAR(TM, 'YYYYMMDDHH24MI') AS TM, "+ 
-				 " 	FRSC AS FRSC "+
-				 " FROM AMISUSER.METAR "+
-				 " WHERE MSG_TYPE IN ('METARSCIAL', 'SPECI', 'METAR', 'METARSPECI') "+
-				 " AND STN_CD = '" + stnCd + "'"+
-				 " AND TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI') "+ 
-				 " AND TM <= TO_DATE('" + endTmStr + "', 'YYYYMMDDHH24MI') "+
-				 " AND INP_TYPE NOT IN (3,4) "+
-				 " ORDER BY TM ASC ";
-		
+		final String query = 
+				
+				" SELECT                                                                   "+
+				" 	  TO_CHAR(TM, 'YYYYMMDDHH24MI') AS TM,                                 "+
+				"     MSG_TYPE,                                                            "+
+				"     TRIM(MTPH1||' '||MTPH2||' '||MTPH3||' '||MTPH_ETC) AS SKYCONDITION,  "+
+				"     RN,                                                                  "+
+				"     SN,                                                                  "+
+				"     FRSC,                                                                "+
+				"     FRSC_1H                                                              "+
+				"                                                                          "+
+				" FROM AMISUSER.METAR                                                      "+
+				" WHERE 1=1                                                                "+
+				" AND STN_CD = '"+stnCd+"'                                                 "+
+				" AND MSG_TYPE IN ('METARSCIAL', 'SPECI', 'METAR', 'METARSPECI')           "+
+				" AND TM >= TO_DATE('"+startTmStr+"', 'YYYYMMDDHH24MI')                    "+
+				" AND TM <= TO_DATE('"+endTmStr+"', 'YYYYMMDDHH24MI')                      "+
+				" AND INP_TYPE NOT IN (3,4)                                                "+
+				" ORDER BY TM ASC                                                          ";
+	
 		List<Map<String, Object>> resultList = this.amisDBManager.selectWithCamelcase(query);
 			
 		for(int i=0 ; i<resultList.size() ; i++) {
 			
 			Map<String, Object> map = resultList.get(i);
 			
+			String rn = (String)map.get("rn");
+			String sn = (String)map.get("sn");
 			String frsc = (String)map.get("frsc");
+			String frsc1h = (String)map.get("frsc1h");
+			
+			if(rn != null) {				
+				map.put("rn", Double.valueOf(rn)/10);
+			}
+			
+			if(sn != null) {				
+				map.put("sn", Double.valueOf(sn)/10);
+			}
 			
 			if(frsc != null) {				
 				map.put("frsc", Double.valueOf(frsc)/10);
+			}
+			
+			if(frsc1h != null) {				
+				map.put("frsc1h", Double.valueOf(frsc1h)/10);
 			}
 		}
 			
@@ -773,7 +903,7 @@ public class EvaluationDatabaseUtil {
 							 " AND TM >= TO_DATE('"+startTmStr+"','YYYYMMDDHH24MI') "+
 							 " AND TM <= TO_DATE('"+endTmStr+"','YYYYMMDDHH24MI') "+
 							 " AND WRNG_TYPE IN ('1', '2', '3', '4', '5', '8') "+
-							// " AND MSG_TEXT NOT LIKE '%EXTENDED%'"+
+							 " AND INP_NM IS NOT NULL "+
 							 " ORDER BY TM DESC ";
 
 		List<Map<String, Object>> resultList = this.amisDBManager.selectWithCamelcase(query);
@@ -781,7 +911,7 @@ public class EvaluationDatabaseUtil {
 		return resultList;
 	}
 	
-	public List<String> getWarnResultCount(String stnCd, String anncTmStr, int evalVer, int warnTypeCode) {
+	public List<String> getWarnEvalResultCount(String stnCd, String anncTmStr, int evalVer, int warnTypeCode) {
 		
 		final String query = 
 				"SELECT EVAL_UID FROM AAMI." + this.tablePrefix + "EVAL_WARN_RESULT WHERE STN_CD = ''{0}'' AND EVAL_TM = TO_DATE(''{1}'', ''YYYYMMDDHH24MI'') AND EVAL_VER = {2} AND WARN_TYPE_CODE = {3}";
@@ -804,7 +934,7 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
-	public void removeWarnResultData(List<String> evalUIDList) {
+	public void removeWarnEvalResultData(List<String> evalUIDList) {
 		
 		final String queryEvalResultDetail = "DELETE " + this.tablePrefix + "EVAL_WARN_RESULT_DETAIL WHERE EVAL_UID = ''{0}''";
 		final String queryEvalResult = "DELETE " + this.tablePrefix + "EVAL_WARN_RESULT WHERE EVAL_UID = ''{0}''";
@@ -834,7 +964,7 @@ public class EvaluationDatabaseUtil {
 		
 		final String query = 
 				"INSERT INTO AAMI." + this.tablePrefix + "EVAL_WARN_RESULT VALUES (''{0}'',''{1}'',''{2}'',''{3}'',TO_DATE(''{4}'', ''YYYYMMDDHH24MI''),TO_DATE(''{5}'', ''YYYYMMDDHH24MI''),TO_DATE(''{6}'', ''YYYYMMDDHH24MI''),TO_DATE(''{7}'', ''YYYYMMDDHH24MI''),TO_DATE(''{8}'', ''YYYYMMDDHH24MI''),sysdate,"+ 
-				 "''{9}'',''{10}'',''{11}'',''{12}'',''{13}'',''{14}'',''{15}'',''{16}'')"; 
+				 "''{9}'',''{10}'',''{11}'',''{12}'',''{13}'',''{14}'',''{15}'',''{16}'',''{17}'',''{18}'')"; 
 		
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
 	}

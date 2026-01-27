@@ -42,6 +42,8 @@ public class EvaluateAmisLf_Process extends DaemonProcess {
 	
 	private EvaluationDatabaseUtil evaluationDatabaseUtil;
 	
+	private Map<String, String> reqMap;
+	
 	private boolean initialize() {
 		
 		StandardPBEStringEncryptor encryptor = new StandardPBEStringEncryptor();
@@ -86,9 +88,10 @@ public class EvaluateAmisLf_Process extends DaemonProcess {
 	}
 
 	@Override
-	public void process(Configuration config) {
+	public void process(Configuration config, Map<String, String> reqMap) {
 		
 		this.config = config;
+		this.reqMap = reqMap;
 		
 		System.out.println(":: Start Initialize");
 		
@@ -133,10 +136,21 @@ public class EvaluateAmisLf_Process extends DaemonProcess {
 			// 시작일은 1일을 뺀다, UTC 이므로 9를 더뺌
 			cal.add(Calendar.HOUR_OF_DAY, -24-9);
 			
-			String startTmStr = "202401010000";//sdf.format(cal.getTime());
+			String startTmStr = sdf.format(cal.getTime());
 			cal.add(Calendar.HOUR_OF_DAY, 24);
 			// 종료일은 시작일에서 1일을 더한다
-			String endTmStr = "202501010000";//sdf.format(cal.getTime());
+			String endTmStr = sdf.format(cal.getTime());
+			
+			if(this.reqMap != null) {
+				
+				String s = this.reqMap.get("-s");
+				String e = this.reqMap.get("-e");
+				
+				if(s != null && e != null) {
+					startTmStr = s;
+					endTmStr = e;
+				}
+			}
 			
 			System.out.println(":: START DATE: " + startTmStr);
 			System.out.println(":: END DATE: " + endTmStr);
@@ -195,14 +209,14 @@ public class EvaluateAmisLf_Process extends DaemonProcess {
 		
 		System.out.println("->\t Check Duplicated Row ...");
 		
-		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getLfResultCount(stnCd, msgType, msgSts, evalTmStr, evalVer);
+		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getLfEvalResultCount(stnCd, msgType, msgSts, evalTmStr, evalVer);
 		
 		if(dupEvalUIDList != null && dupEvalUIDList.size() >= 0) {
 			
 			System.out.println("->\t\t Find Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			System.out.println("->\t\t Delete Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
 			
-			this.evaluationDatabaseUtil.removeLfResultData(dupEvalUIDList);
+			this.evaluationDatabaseUtil.removeLfEvalResultData(dupEvalUIDList);
 		}		
 		
 		if(this.evaluationDatabaseUtil.insertEvalLfLfMsg(evaluationId, lfInfo, lfData) < 0) {

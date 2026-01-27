@@ -3,6 +3,8 @@ package kama.daemon.main;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
@@ -11,6 +13,30 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import kama.daemon.proc.DaemonProcess;
 
 public class DaemonMain {
+	
+	private static Map<String, String> getReqMap(String[] args) {
+		
+		String[] _args = new String[args.length-1];
+		
+		for(int i=0 ; i<args.length-1 ; i++) {
+			_args[i] = args[i+1];
+		}
+		
+		if(_args.length < 4) {
+			return null;
+		}
+		
+		String[] orders = new String[(int)(_args.length/2)];
+		String[] params = new String[(int)(_args.length/2)];
+		
+		Map<String, String> reqMap = new HashMap<String, String>();
+		
+		for(int i=0 ; i<(int)(_args.length/2) ; i++) {
+			reqMap.put( _args[i*2], _args[i*2+1]);
+		}
+		
+		return reqMap;
+	}
 	
 	public static void main(String[] args) {
 
@@ -48,8 +74,10 @@ public class DaemonMain {
 
 			Configuration config = configs.properties(new File(confPath.replaceAll("bin", "conf") + "config.properties"));
 
+			Map<String, String> reqMap = getReqMap(args);
+			
 			if (proc != null) {
-				proc.process(config);
+				proc.process(config, reqMap);
 			}
 
 		} catch (ConfigurationException e) {
