@@ -286,7 +286,7 @@ public class EvaluationUtils {
 			break;
 		case "RKJY":
 			sHour = 22;
-			eHour = 8;		// 25.03.30 19시 이후로 9 -> 8시로 변경
+			eHour = 7;		// 26.03.29 이후로 8 -> 7시로 변경
 			break;
 		}
 		
@@ -391,7 +391,7 @@ public class EvaluationUtils {
 			break;
 		case "RKJY":
 			sHour = 01;
-			eHour = 13;		// 25.03.30 19시 이후로 14 -> 13시로 변경
+			eHour = 12;		// 26.03.29 이후로 13 -> 12시로 변경
 			break;	
 		case "RKPK":
 			sHour = 23;
