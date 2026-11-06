@@ -29,11 +29,23 @@ public class WarnEvaluation {
 			throw new IllegalArgumentException("Invalid evaluation version: " + evalVer);
 		}
 		
-		WarnEvaluationData warnEvaluationData = warnEvaluator.evaluate(warnData);
-		Map<String, Object> warnEvaluationResult = warnEvaluator.getEvaluationResult(warnEvaluationData, scoreFixCount);
+		if(evalVer != 3) {
+			
+			WarnEvaluationData warnEvaluationData = warnEvaluator.evaluate(warnData);
+			Map<String, Object> warnEvaluationResult = warnEvaluator.getEvaluationResult(warnEvaluationData, scoreFixCount);
+			
+			warnEvaluationDataMap.put("warnEvaluationData", warnEvaluationData);
+			warnEvaluationDataMap.put("warnEvaluationResult", warnEvaluationResult);
+			
+		} else {
+			
+			WarnEvaluationLeadTimeData warnEvaluationData = warnEvaluator.evaluateLeadTime(warnData);
+			Map<String, Object> warnEvaluationResult = warnEvaluator.getEvaluationLeadTimeResult(warnEvaluationData);
+			
+			warnEvaluationDataMap.put("warnEvaluationData", warnEvaluationData);
+			warnEvaluationDataMap.put("warnEvaluationResult", warnEvaluationResult);
+		}
 		
-		warnEvaluationDataMap.put("warnEvaluationData", warnEvaluationData);
-		warnEvaluationDataMap.put("warnEvaluationResult", warnEvaluationResult);
 		
 		return warnEvaluationDataMap;
 	}

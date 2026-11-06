@@ -934,10 +934,50 @@ public class EvaluationDatabaseUtil {
 		}
 	}
 	
+	public List<String> getWarnEvalLeadTimeResultCount(String stnCd, String anncTmStr, int evalVer, int warnTypeCode) {
+		
+		final String query = 
+				"SELECT EVAL_UID FROM AAMI." + this.tablePrefix + "EVAL_WARN_LT_RESULT WHERE STN_CD = ''{0}'' AND EVAL_TM = TO_DATE(''{1}'', ''YYYYMMDDHH24MI'') AND EVAL_VER = {2} AND WARN_TYPE_CODE = {3}";
+		
+		List<Map<String, Object>> resultList = this.aamiDBManager.selectWithCamelcase(MessageFormat.format(query, new Object[]{
+			stnCd, anncTmStr, evalVer, warnTypeCode	
+		}));
+		
+		List<String> evalUIDList = new ArrayList<String>();
+		
+		if(resultList != null) {
+			
+			for(int i=0 ; i<resultList.size() ; i++) {
+				evalUIDList.add((String)resultList.get(i).get("evalUid"));
+			}
+			
+			return evalUIDList;
+		} else {
+			return null;
+		}
+	}
+	
 	public void removeWarnEvalResultData(List<String> evalUIDList) {
 		
 		final String queryEvalResultDetail = "DELETE " + this.tablePrefix + "EVAL_WARN_RESULT_DETAIL WHERE EVAL_UID = ''{0}''";
 		final String queryEvalResult = "DELETE " + this.tablePrefix + "EVAL_WARN_RESULT WHERE EVAL_UID = ''{0}''";
+		
+		for(int i=0 ; i<evalUIDList.size() ; i++) {
+				
+			this.aamiDBManager.delete(MessageFormat.format(queryEvalResultDetail, new Object[]{
+				evalUIDList.get(i)	
+			}));
+			
+			this.aamiDBManager.delete(MessageFormat.format(queryEvalResult, new Object[]{
+				evalUIDList.get(i)	
+			}));
+		}	
+	}
+	
+	public void removeWarnEvalLeadTimeResultData(List<String> evalUIDList) {
+		
+		final String queryEvalResultDetail = "DELETE " + this.tablePrefix + "EVAL_WARN_LT_RESULT_DETAIL WHERE EVAL_UID = ''{0}''";
+		final String queryEvalResult = "DELETE " + this.tablePrefix + "EVAL_WARN_LT_RESULT WHERE EVAL_UID = ''{0}''";
 		
 		for(int i=0 ; i<evalUIDList.size() ; i++) {
 				
@@ -960,11 +1000,29 @@ public class EvaluationDatabaseUtil {
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
 	}
 	
+	public int insertEvalWarnLeadTimeResultDetail(List<Object> paramList) {
+		
+		final String query = 
+				"INSERT INTO AAMI." + this.tablePrefix + "EVAL_WARN_LT_RESULT_DETAIL VALUES (''{0}'',''{1}'',TO_DATE(''{2}'', ''YYYYMMDDHH24MI''),TO_DATE(''{3}'', ''YYYYMMDDHH24MI''),''{4}'',TO_DATE(''{5}'', ''YYYYMMDDHH24MI''),''{6}'',''{7}'')";
+		
+		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
+	}
+	
 	public int insertEvalWarnResult(List<Object> paramList) {
 		
 		final String query = 
 				"INSERT INTO AAMI." + this.tablePrefix + "EVAL_WARN_RESULT VALUES (''{0}'',''{1}'',''{2}'',''{3}'',TO_DATE(''{4}'', ''YYYYMMDDHH24MI''),TO_DATE(''{5}'', ''YYYYMMDDHH24MI''),TO_DATE(''{6}'', ''YYYYMMDDHH24MI''),TO_DATE(''{7}'', ''YYYYMMDDHH24MI''),TO_DATE(''{8}'', ''YYYYMMDDHH24MI''),sysdate,"+ 
 				 "''{9}'',''{10}'',''{11}'',''{12}'',''{13}'',''{14}'',''{15}'',''{16}'',''{17}'',''{18}'')"; 
+		
+		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
+	}
+	
+	public int insertEvalWarnLeadTimeResult(List<Object> paramList) {
+		
+		final String query = 
+				"INSERT INTO AAMI." + this.tablePrefix + "EVAL_WARN_LT_RESULT VALUES (''{0}'',''{1}'',''{2}'',''{3}'',TO_DATE(''{4}'', ''YYYYMMDDHH24MI''),TO_DATE(''{5}'', ''YYYYMMDDHH24MI''),TO_DATE(''{6}'', ''YYYYMMDDHH24MI''),TO_DATE(''{7}'', ''YYYYMMDDHH24MI''),TO_DATE(''{8}'', ''YYYYMMDDHH24MI''),sysdate,"+ 
+				 "''{9}'',''{10}'')"; 
+		
 		
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));
 	}

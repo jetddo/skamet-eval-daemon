@@ -9,9 +9,13 @@ abstract public class WarnEvaluator {
 	abstract public WarnEvaluationData evaluate(WarnData warnData) throws Exception;
 	
     // 신규 선행시간 평가체계
-    public WarnEvaluationData evaluateLeadTime(WarnData warnData) throws Exception {
+    public WarnEvaluationLeadTimeData evaluateLeadTime(WarnData warnData) throws Exception {
         throw new UnsupportedOperationException("Lead time evaluation is not supported.");
     }
 	
-	abstract public Map<String, Object> getEvaluationResult(WarnEvaluationData warnEvaluationDataList, int scoreFixCount);
+	abstract public Map<String, Object> getEvaluationResult(WarnEvaluationData warnEvaluationData, int scoreFixCount);
+	
+    public Map<String, Object> getEvaluationLeadTimeResult(WarnEvaluationLeadTimeData warnEvaluationData) throws Exception {
+        throw new UnsupportedOperationException("Lead time evaluation is not supported.");
+    }
 }

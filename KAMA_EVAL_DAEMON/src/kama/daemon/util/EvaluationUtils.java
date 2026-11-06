@@ -135,7 +135,7 @@ public class EvaluationUtils {
 		
 		return Arrays.asList(stnCds);
 	}
-	
+	 
 	public static String getAirportId(String stnCd) {
 		
 		String stnId = null;

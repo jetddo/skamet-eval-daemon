@@ -16,6 +16,7 @@ import kama.daemon.db.DataBaseManager;
 import kama.daemon.db.EvaluationDatabaseUtil;
 import kama.daemon.eval.WarnEvaluation;
 import kama.daemon.eval.WarnEvaluationData;
+import kama.daemon.eval.WarnEvaluationLeadTimeData;
 import kama.daemon.eval.warn.WarnData;
 import kama.daemon.eval.warn.WarnParser;
 import kama.daemon.util.DatabaseUtil;
@@ -126,12 +127,14 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
 			
 			Calendar cal = new GregorianCalendar();
+			cal.setTime(new Date());
 			
 			// 시작일은 3일을 뺀다, UTC 이므로 9를 더뺌
-			cal.add(Calendar.HOUR_OF_DAY, -72-9);
+			cal.add(Calendar.HOUR_OF_DAY, -24*7);
 			
 			String startTmStr = sdf.format(cal.getTime());
-			cal.add(Calendar.HOUR_OF_DAY, 24);
+			
+			cal.setTime(new Date());
 			// 종료일은 시작일에서 1일을 더한다
 			String endTmStr = sdf.format(cal.getTime());
 			
@@ -151,6 +154,8 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			
 			List<Map<String, Object>> warnInfoList = this.evaluationDatabaseUtil.getAmisWarnInfoList(stnCd, startTmStr, endTmStr);
 			
+			System.out.println(":: WARN INFO LIST COUNT: " + (warnInfoList == null ? 0 : warnInfoList.size()));
+			
 			try {
 				
 				Integer[] evalVerList = new Integer[]{3};
@@ -164,7 +169,12 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 					if(warnEvaluationInfoList != null) {
 						
 						for(int j=0 ; j<warnEvaluationInfoList.size() ; j++) {
-							this.insertEvaluationResult(warnEvaluationInfoList.get(j), evalVer);	
+							
+							if(evalVer != 3) {
+								this.insertEvaluationResult(warnEvaluationInfoList.get(j), evalVer);	
+							} else {
+								this.insertEvaluationLeadTimeResult(warnEvaluationInfoList.get(j), evalVer);
+							}	
 						}
 					}
 				}
@@ -320,6 +330,131 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 		this.aamiDBManager.commit();
 	}
 	
+	@SuppressWarnings("unchecked")
+	private void insertEvaluationLeadTimeResult(Map<String, Object> warnEvaluationInfo, int evalVer) {
+		
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
+		
+		System.out.println("-> Start Insert Warn Evaluation Lead Time Result");
+		
+		final String evaluationId = EvaluationUtils.createWarnEvaluationId(this.evaluationDatabaseUtil.getEvaluationNextSeq("WARN"));
+		
+		WarnData warnData = (WarnData)warnEvaluationInfo.get("warnData");
+		WarnEvaluationLeadTimeData warnEvaluationData = (WarnEvaluationLeadTimeData)warnEvaluationInfo.get("warnEvaluationData");
+		
+		String stnCd = warnData.getStnCd();
+		String inpNm = warnData.getInpNm();
+		Integer warnTypeCode = warnData.getWarnTypeCode();
+		Integer warnNum = warnData.getWarnNum();
+		
+		String evalTmStr = sdf.format(warnData.getAnncTm());
+		String stEffctTmStr = null;
+		String edEffctTmStr = null;
+		
+		try {
+			
+			stEffctTmStr = sdf.format(warnEvaluationData.getStEffctTm());
+			edEffctTmStr = sdf.format(warnEvaluationData.getEdEffctTm());	
+			
+		} catch (Exception e) {
+			
+			stEffctTmStr = sdf.format(warnData.getStEffctTm());
+			edEffctTmStr = sdf.format(warnData.getEdEffctTm());	
+		}		
+		
+		String stCnlTmStr = warnData.getStCnlTm() == null ? null : sdf.format(warnData.getStCnlTm());
+		String edCnlTmStr = warnData.getEdCnlTm() == null ? null : sdf.format(warnData.getEdCnlTm());
+		String stExtTmStr = warnData.getStExtTm() == null ? null : sdf.format(warnData.getStExtTm());
+		String edExtTmStr = warnData.getEdExtTm() == null ? null : sdf.format(warnData.getEdExtTm());
+		
+		System.out.println("->\t Insert Warn Msg ...");
+		
+		System.out.println("->\t Check Duplicated Row ...");
+		
+		List<String> dupEvalUIDList = this.evaluationDatabaseUtil.getWarnEvalLeadTimeResultCount(stnCd, evalTmStr, evalVer, warnTypeCode);
+		
+		if(dupEvalUIDList != null && dupEvalUIDList.size() >= 0) {
+			
+			System.out.println("->\t\t Find Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
+			System.out.println("->\t\t Delete Duplicated Row (Count: " + dupEvalUIDList.size() + ")");
+			
+			this.evaluationDatabaseUtil.removeWarnEvalLeadTimeResultData(dupEvalUIDList);
+		}	
+		
+		if(warnEvaluationData != null) {
+			
+			System.out.println("->\t Insert Warn Evaluation Lead Time Result Detail ...");
+			
+			List<Object> paramList = new ArrayList<Object>();
+			
+			// 평가 고유 번호
+			paramList.add(evaluationId);
+						
+			paramList.add(stnCd);
+			
+			// 평가 시간
+			Date evaluationTm = warnEvaluationData.getEvaluationTm();
+			paramList.add(sdf.format(evaluationTm));
+			
+			// 경보 발표 시점 관측시간
+			Date issueObsTm = warnEvaluationData.getIssueObsTm();
+			paramList.add(issueObsTm == null ? null : sdf.format(issueObsTm));
+			
+			// 경보 발표 시점 현상
+			String issueObsVal = warnEvaluationData.getIssueObsVal();
+			paramList.add(issueObsVal);
+			
+			// 최초 도달 시각
+			Date firstArrTm = warnEvaluationData.getFirstArrTm();
+			paramList.add(firstArrTm == null ? null : sdf.format(firstArrTm));
+			
+			// 최초 도달 현상
+			String firstArrVal = warnEvaluationData.getFirstArrVal();
+			paramList.add(firstArrVal);		
+			
+			// 선행시간
+			Integer firstArrMin = warnEvaluationData.getFirstArrMin();
+			paramList.add(firstArrMin);	
+						
+			if(this.evaluationDatabaseUtil.insertEvalWarnLeadTimeResultDetail(paramList) < 0) {
+				this.aamiDBManager.rollback();
+				return;
+			}
+		}
+		
+		System.out.println("->\t Insert Warn Evaluation Lead Time Result  ...");
+		
+		List<Object> paramList = new ArrayList<Object>();
+		
+		paramList.add(evaluationId);
+		paramList.add(evalVer);
+		paramList.add(stnCd);
+		paramList.add(warnTypeCode);
+		paramList.add(evalTmStr);
+		paramList.add(stEffctTmStr);
+		paramList.add(edEffctTmStr);
+		paramList.add(stCnlTmStr);
+		paramList.add(edCnlTmStr);
+		
+		if(warnEvaluationData != null && warnEvaluationData.isAvailable()) {
+			
+			paramList.add(inpNm);
+			paramList.add("Y");
+			
+		} else {
+			
+			paramList.add(inpNm);
+			paramList.add("N");
+		}
+		
+		if(this.evaluationDatabaseUtil.insertEvalWarnLeadTimeResult(paramList) < 0) {
+			this.aamiDBManager.rollback();
+			return;
+		}
+		
+		this.aamiDBManager.commit();
+	}
+	
 	private List<Map<String, Object>> getWarnEvaluationInfoList(List<Map<String, Object>> warnInfoList, String stnCd, int evalVer) {
 		
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmm");
@@ -373,7 +508,7 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 				warnEvaluationInfoList.add(warnEvaluationInfo);
 				
 			} catch (Exception e) {
-				
+				e.printStackTrace();
 			}
 		}
 		
