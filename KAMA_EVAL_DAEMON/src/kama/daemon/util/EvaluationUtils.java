@@ -125,8 +125,12 @@ public class EvaluationUtils {
 	
 	public static List<String> getAirportStnCdListForEvalWarn() {
 		
+//		String[] stnCds = new String[]{
+//			"RKSI","RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"
+//		};
+		
 		String[] stnCds = new String[]{
-			"RKSI","RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"
+			"RKSI"
 		};
 		
 		return Arrays.asList(stnCds);

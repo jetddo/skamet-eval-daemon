@@ -153,7 +153,7 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			
 			try {
 				
-				Integer[] evalVerList = new Integer[]{1,2};
+				Integer[] evalVerList = new Integer[]{3};
 				
 				for(Integer evalVer : evalVerList) {
 					

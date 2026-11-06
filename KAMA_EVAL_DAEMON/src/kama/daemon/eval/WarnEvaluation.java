@@ -23,6 +23,10 @@ public class WarnEvaluation {
 			warnEvaluator = new WarnEvaluatorVer1(this.evaluationDatabaseUtil);
 		} else if(evalVer == 2) {
 			warnEvaluator = new WarnEvaluatorVer2(this.evaluationDatabaseUtil);
+		} else if (evalVer == 3) {
+			warnEvaluator = new WarnEvaluatorVer3(this.evaluationDatabaseUtil);
+		} else {
+			throw new IllegalArgumentException("Invalid evaluation version: " + evalVer);
 		}
 		
 		WarnEvaluationData warnEvaluationData = warnEvaluator.evaluate(warnData);
