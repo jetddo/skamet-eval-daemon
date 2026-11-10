@@ -780,17 +780,20 @@ public class EvaluationDatabaseUtil {
 	
 	public List<Map<String, Object>> getAmosDataListForWarnEvaluate(String stnId, String startTmStr, String endTmStr) {
 		
-		final String query = " SELECT TO_CHAR(TM, 'YYYYMMDDHH24MI') AS TM, "+ 
-							 " WSPD_10MIN_AVG/10 AS WSPD_10MIN_AVG, "+
-							 " WSPD_1MIN_MAX/10 AS WSPD_1MIN_MAX, "+
-							 " RN_1HR/10 AS RN_1HR, "+
-							 " RN_3HR/10 AS RN_3HR, "+
-							 " RN_12HR/10 AS RN_12HR "+
-							 " FROM AMISUSER.AMOS "+ 
-							 " WHERE 1=1 "+
-							 " AND TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI') + 9/24 "+
-							 " AND TM <= TO_DATE('" + endTmStr + "', 'YYYYMMDDHH24MI') + 9/24 "+				 
-							 " AND STN_ID = '" + stnId + "'";
+		final String query = 
+				
+				" SELECT                                                               "+
+				" 	TO_CHAR(TM, 'YYYYMMDDHH24MI') AS TM,                               "+
+				" 	WSPD_10MIN_AVG/10 AS WSPD_10MIN_AVG,                               "+
+				" 	WSPD_1MIN_MAX/10 AS WSPD_1MIN_MAX,                                 "+
+				" 	CASE WHEN RN_1HR = -9999 THEN 0 ELSE RN_1HR/10 END AS RN_1HR,      "+
+				" 	CASE WHEN RN_3HR = -9999 THEN 0 ELSE RN_3HR/10 END AS RN_3HR,      "+
+				" 	CASE WHEN RN_12HR = -9999 THEN 0 ELSE RN_12HR/10 END AS RN_12HR    "+
+				" FROM AMISUSER.AMOS                                                   "+
+				" WHERE 1=1                                                            "+
+				" AND TM >= TO_DATE('" + startTmStr + "', 'YYYYMMDDHH24MI') + 9/24     "+
+				" AND TM <= TO_DATE('" + endTmStr + "', 'YYYYMMDDHH24MI') + 9/24 	   "+			 
+				" AND STN_ID = '" + stnId + "'";                                       
 		
 		List<Map<String, Object>> resultList = this.amisDBManager.selectWithCamelcase(query);
 					
@@ -1021,7 +1024,7 @@ public class EvaluationDatabaseUtil {
 		
 		final String query = 
 				"INSERT INTO AAMI." + this.tablePrefix + "EVAL_WARN_LT_RESULT VALUES (''{0}'',''{1}'',''{2}'',''{3}'',TO_DATE(''{4}'', ''YYYYMMDDHH24MI''),TO_DATE(''{5}'', ''YYYYMMDDHH24MI''),TO_DATE(''{6}'', ''YYYYMMDDHH24MI''),TO_DATE(''{7}'', ''YYYYMMDDHH24MI''),TO_DATE(''{8}'', ''YYYYMMDDHH24MI''),sysdate,"+ 
-				 "''{9}'',''{10}'')"; 
+				 "''{9}'',''{10}'',''{11}'')"; 
 		
 		
 		return this.aamiDBManager.insert(MessageFormat.format(query, paramList.toArray()).replace("'null'", "null"));

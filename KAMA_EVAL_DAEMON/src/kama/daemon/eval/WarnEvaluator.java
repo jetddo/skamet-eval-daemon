@@ -14,8 +14,4 @@ abstract public class WarnEvaluator {
     }
 	
 	abstract public Map<String, Object> getEvaluationResult(WarnEvaluationData warnEvaluationData, int scoreFixCount);
-	
-    public Map<String, Object> getEvaluationLeadTimeResult(WarnEvaluationLeadTimeData warnEvaluationData) throws Exception {
-        throw new UnsupportedOperationException("Lead time evaluation is not supported.");
-    }
 }

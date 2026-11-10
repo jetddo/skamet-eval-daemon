@@ -39,11 +39,9 @@ public class WarnEvaluation {
 			
 		} else {
 			
-			WarnEvaluationLeadTimeData warnEvaluationData = warnEvaluator.evaluateLeadTime(warnData);
-			Map<String, Object> warnEvaluationResult = warnEvaluator.getEvaluationLeadTimeResult(warnEvaluationData);
+			WarnEvaluationLeadTimeData warnEvaluationData = warnEvaluator.evaluateLeadTime(warnData);	
 			
 			warnEvaluationDataMap.put("warnEvaluationData", warnEvaluationData);
-			warnEvaluationDataMap.put("warnEvaluationResult", warnEvaluationResult);
 		}
 		
 		

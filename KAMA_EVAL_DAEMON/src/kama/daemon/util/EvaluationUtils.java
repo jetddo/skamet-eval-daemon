@@ -125,12 +125,8 @@ public class EvaluationUtils {
 	
 	public static List<String> getAirportStnCdListForEvalWarn() {
 		
-//		String[] stnCds = new String[]{
-//			"RKSI","RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"
-//		};
-		
 		String[] stnCds = new String[]{
-			"RKSI"
+			"RKSI","RKSS","RKPC","RKJB","RKPU","RKNY","RKJY"
 		};
 		
 		return Arrays.asList(stnCds);
@@ -793,7 +789,7 @@ public class EvaluationUtils {
 	
 	public static Double findAmosMaxValue(List<Map<String, Object>> subAmosDataList, String valueKey) {
 		
-		Double maxValue = Double.MIN_VALUE;
+		Double maxValue = -Double.MAX_VALUE;
 		
 		for(int i=0 ; i<subAmosDataList.size() ; i++) {
 			

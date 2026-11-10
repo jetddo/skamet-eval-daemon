@@ -158,7 +158,7 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			
 			try {
 				
-				Integer[] evalVerList = new Integer[]{3};
+				Integer[] evalVerList = new Integer[]{1,2,3};
 				
 				for(Integer evalVer : evalVerList) {
 					
@@ -446,6 +446,8 @@ public class EvaluateAmisWarn_Process extends DaemonProcess {
 			paramList.add(inpNm);
 			paramList.add("N");
 		}
+		
+		paramList.add(warnNum);
 		
 		if(this.evaluationDatabaseUtil.insertEvalWarnLeadTimeResult(paramList) < 0) {
 			this.aamiDBManager.rollback();

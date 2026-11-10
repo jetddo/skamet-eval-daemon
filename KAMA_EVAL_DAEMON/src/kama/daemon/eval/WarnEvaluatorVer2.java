@@ -152,6 +152,8 @@ public class WarnEvaluatorVer2 extends WarnEvaluator {
 			this.evaluatePrev(warnEvaluationData);
 		}
 		
+		this.printEvaluationLog(stnCd, warnEvaluationData);
+		
 		return warnEvaluationData;
 	}
 	
@@ -1062,5 +1064,43 @@ public class WarnEvaluatorVer2 extends WarnEvaluator {
 			e.printStackTrace();
 			warnEvaluationData.setAvailable(false);
 		}
+	}
+	
+	// 경보 평가 결과 로그
+	private void printEvaluationLog(String stnCd, WarnEvaluationData data) {
+
+	    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+	    WarnEvaluationData.Score score = data.getScore();
+
+	    float effctScore = score.getEffct();
+	    float prevScore = score.getPrev();
+	    float totalScore = effctScore + prevScore;
+
+	    StringBuilder sb = new StringBuilder();
+
+	    sb.append("[WARN EVAL Ver1] ");
+	    sb.append("STN=").append(stnCd);
+	    sb.append(", TYPE=").append(data.getWarnType());
+	    sb.append(", TM=").append(formatLogDate(sdf, data.getEvaluationTm()));
+	    sb.append(", AVAILABLE=").append(data.isAvailable() ? "Y" : "N");
+
+	    sb.append(", FIRST_ARR_TM=").append(formatLogDate(sdf, data.getFirstArrTm()));
+	    sb.append(", FIRST_ARR_VAL=").append(data.getFirstArrVal());
+
+	    sb.append(", PREV_MIN=").append(data.getPrevMin());
+	    sb.append(", FIRST_ARR_MIN=").append(data.getFirstArrMin());
+
+	    sb.append(", EFFCT_SCORE=").append(effctScore);
+	    sb.append(", PREV_SCORE=").append(prevScore);
+	    sb.append(", TOTAL_SCORE=").append(totalScore);
+
+	    System.out.println(sb.toString());
+	}
+
+	// 로그 날짜 변환
+	private String formatLogDate(SimpleDateFormat sdf, Date date) {
+
+	    return date != null ? sdf.format(date) : "-";
 	}
 }

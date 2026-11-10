@@ -389,48 +389,35 @@ public class WarnParser {
 			int loop = 0;
 			
 			while(loop++ < MAX_LOOP && cal.getTime().getTime() <= edEffctTm.getTime()) {
-				
-				int hour = Integer.valueOf(sdf.format(cal.getTime()));
-				
-				switch(warnData.getStnCd()) {
-				
-				case "RKJB":
-					
-					if(hour > 13 && hour < 21) {
-						warnData.setAvailable(false);
-						warnData.setAutoCancel(true);
-						continue;
-					}
-					
-					break;
-				case "RKPU":
-					
-					if(hour > 13 && hour < 21) {
-						warnData.setAvailable(false);
-						warnData.setAutoCancel(true);
-						continue;
-					}
-					
-					break;
-				case "RKNY":
-					
-					if(hour > 9 && hour < 23) {
-						warnData.setAvailable(false);
-						warnData.setAutoCancel(true);
-						continue;
-					}
-					
-					break;
-				case "RKJY":
-					
-					if(hour > 11 && hour < 22) {
-						warnData.setAvailable(false);
-						warnData.setAutoCancel(true);
-						continue;
-					}
-					
-					break;
-				}
+
+			    int hour = Integer.valueOf(sdf.format(cal.getTime()));
+
+			    boolean isAutoTime = false;
+
+			    switch(warnData.getStnCd()) {
+
+			    case "RKJB":
+			    case "RKPU":
+			        isAutoTime = hour > 13 && hour < 21;
+			        break;
+
+			    case "RKNY":
+			        isAutoTime = hour > 9 && hour < 23;
+			        break;
+
+			    case "RKJY":
+			        isAutoTime = hour > 11 && hour < 22;
+			        break;
+
+			    }
+
+			    if(isAutoTime) {
+			        warnData.setAvailable(false);
+			        warnData.setAutoCancel(true);
+			        break;
+			    }
+
+			    cal.add(Calendar.HOUR_OF_DAY, 1);
 			}
 		}
 				
